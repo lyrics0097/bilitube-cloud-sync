@@ -438,8 +438,13 @@ async function loadAndVerifyLicense(overrideAuthPolicy = null) {
     }
   }
 
-  if (!verified && fileLic && fileLic.activated && typeof fileLic.activationKey === 'string' && fileLic.activationKey.trim()) {
-    const res = await verifyActivationKey(fileLic.activationKey, deviceId, cloudAuthPolicy);
+  const fileKeyCandidate =
+    fileLic && typeof (fileLic.activationKey || fileLic.licenseKey || fileLic.key) === 'string'
+      ? String(fileLic.activationKey || fileLic.licenseKey || fileLic.key).trim()
+      : '';
+
+  if (!verified && fileLic && fileLic.activated && fileKeyCandidate) {
+    const res = await verifyActivationKey(fileKeyCandidate, deviceId, cloudAuthPolicy);
     if (res.valid) {
       verified = res;
       candidateKey = res.key;
@@ -449,7 +454,9 @@ async function loadAndVerifyLicense(overrideAuthPolicy = null) {
   }
 
   const isValid = Boolean(verified && verified.valid);
-  const masterOwner = Boolean(isValid && fileLic?.masterOwner && deviceId === AUTHOR_HARDWARE_ID);
+  const masterOwner = Boolean(
+    isValid && (fileLic?.masterOwner || fileLic?.isAuthorMaster) && deviceId === AUTHOR_HARDWARE_ID
+  );
 
   const nextLicense = {
     deviceId,

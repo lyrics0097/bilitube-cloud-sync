@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
-  "syncVersion": "20261018.203213",
-  "updatedAt": "2026-10-18T20:32:13.400367+08:00",
+  "syncVersion": "20261018.204656",
+  "updatedAt": "2026-10-18T20:46:56.092529+08:00",
   "masterSettings": {
     "enabled": true,
     "bilibiliEnabled": true,
@@ -24,17 +24,17 @@
     "content/youtube-main.js": "99e5da58ced8bd8e80e08312dbe920c73d5e1b125235835acfb3bf34fa78390d",
     "content/youtube-isolated.js": "7d74bb2b4fa9d43de0a5eca985320b344a1ce2faa5e515ba7a3d2ff30790ae92",
     "content/youtube.css": "13b16008c4a7b839d19c9c0f6e6bcfa577a234caa511520e41b6d620400f269f",
-    "background/service-worker.js": "859a68588ab56e747c711888a47adb6021c1e0e6d3d085aa9f98beb08822ba3c",
-    "popup/popup.html": "7e0be9ef282b9fec76806ac1153b12e7bd1d490ba6504ff6d726072bfb0e187d",
-    "popup/popup.css": "040cad2547fbbba0f5901dc3e6b0b03c188833b7d7c263c6dbebeea084706afe",
-    "popup/popup.js": "602de4d38cf57586475b071728cab25eff273c3368038f36aac07143eab9177d",
+    "background/service-worker.js": "4db796ee0adf0b97447dd7e7621caa8de3fefb8ed049a656941c66f43dc5abb7",
+    "popup/popup.html": "bf7c7b93dcca74ab91c844ae6bc3d20e29d1862e7410eef4393d23b542f5fb10",
+    "popup/popup.css": "5ac996fe67f7ae2aba4fb2cec221c45a6dcfd31f9dbd326ef078acb7e032c138",
+    "popup/popup.js": "9542a62906587e09ca1bb1ae01962ae3c558656aa56fafa3477ad29bf727cb4a",
     "rules/bilibili_rules.json": "6cae99e664a3f2ad0ff9bd880048671f67d78b5547cdc8ced204419030580255",
     "rules/youtube_rules.json": "23f9ad830453efa722fe4c5e8d10eb37e2dfccf746aa1e63624ea0ef01f953b0"
   },
   "evolutionSnapshot": {
     "version": "2.0.0",
-    "generatedAt": "2026-10-18T12:07:37.799301+00:00",
-    "timestamp": 1792325257799,
+    "generatedAt": "2026-10-18T12:45:23.744087+00:00",
+    "timestamp": 1792327523744,
     "signatureHash": "5bcadd75943556b4",
     "sourceCount": 4,
     "biliCosmetics": [

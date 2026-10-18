@@ -200,6 +200,17 @@ function normalizeState(raw = {}, tabId = undefined) {
 
   const lastSyncTime = Number(rawEvo.lastSyncTime ?? rawEvo.timestamp ?? 0) || 0;
 
+  const rawLic = raw.license || {};
+  const license = {
+    deviceId: typeof rawLic.deviceId === 'string' && rawLic.deviceId ? rawLic.deviceId : 'BT-0000-0000',
+    activated: Boolean(rawLic.activated),
+    masterOwner: Boolean(rawLic.masterOwner),
+    activationKey: typeof rawLic.activationKey === 'string' ? rawLic.activationKey : '',
+    mode: typeof rawLic.mode === 'string' ? rawLic.mode : '',
+    expiresAt: typeof rawLic.expiresAt === 'string' ? rawLic.expiresAt : '',
+    statusText: typeof rawLic.statusText === 'string' ? rawLic.statusText : ''
+  };
+
   return {
     settings,
     stats: {
@@ -213,8 +224,10 @@ function normalizeState(raw = {}, tabId = undefined) {
       learnedCount,
       lastSyncTime,
       lastSyncStatus: rawEvo.lastSyncStatus || DEFAULT_EVOLUTION.lastSyncStatus,
-      sourceSummary: rawEvo.sourceSummary || DEFAULT_EVOLUTION.sourceSummary
-    }
+      sourceSummary: rawEvo.sourceSummary || DEFAULT_EVOLUTION.sourceSummary,
+      cloudAnnouncement: typeof rawEvo.cloudAnnouncement === 'string' ? rawEvo.cloudAnnouncement : ''
+    },
+    license
   };
 }
 
@@ -223,8 +236,40 @@ function normalizeState(raw = {}, tabId = undefined) {
  * @param {ReturnType<typeof normalizeState>} state
  */
 function renderState(state) {
-  const { settings, stats, tabBlocked, evolution } = state;
+  const { settings, stats, tabBlocked, evolution, license } = state;
   currentSettings = { ...settings };
+
+  // Handle License Gate Overlay & Badge
+  const gateOverlay = document.getElementById('license-gate-overlay');
+  const gateDeviceIdEl = document.getElementById('gate-device-id');
+  const licenseBadgeEl = document.getElementById('license-status-badge');
+  const licenseDeviceTagEl = document.getElementById('license-device-tag');
+
+  if (gateDeviceIdEl && license?.deviceId) {
+    gateDeviceIdEl.textContent = license.deviceId;
+  }
+  if (licenseDeviceTagEl && license?.deviceId) {
+    licenseDeviceTagEl.textContent = license.deviceId;
+  }
+
+  if (license && !license.activated) {
+    if (gateOverlay) {
+      gateOverlay.style.display = 'flex';
+    }
+  } else {
+    if (gateOverlay) {
+      gateOverlay.style.display = 'none';
+    }
+    if (licenseBadgeEl) {
+      if (license?.masterOwner) {
+        licenseBadgeEl.textContent = '👑 作者主控本机';
+        licenseBadgeEl.classList.add('is-master');
+      } else {
+        licenseBadgeEl.textContent = '🔑 已授权 · 与作者配置云同步中';
+        licenseBadgeEl.classList.remove('is-master');
+      }
+    }
+  }
 
   // Update checkboxes
   for (const key of SETTING_KEYS) {
@@ -237,7 +282,7 @@ function renderState(state) {
   // Toggle disabled visual state on root container
   const appRoot = document.getElementById('app-root');
   if (appRoot) {
-    appRoot.classList.toggle('is-disabled', !settings.enabled);
+    appRoot.classList.toggle('is-disabled', !settings.enabled || !license?.activated);
   }
 
   // Update active tab status banner
@@ -248,7 +293,11 @@ function renderState(state) {
 
   const { site, hostname } = detectSiteFromUrl(activeTab?.url);
 
-  if (!settings.enabled) {
+  if (!license?.activated) {
+    if (statusCard) statusCard.dataset.site = 'paused';
+    if (statusText) statusText.textContent = '设备待授权解锁';
+    if (domainText) domainText.textContent = '请输入作者派发的验证码 Key 激活护盾';
+  } else if (!settings.enabled) {
     if (statusCard) statusCard.dataset.site = 'paused';
     if (statusText) statusText.textContent = '保护已暂停';
     if (domainText) domainText.textContent = '开启右上角总开关以恢复去广告保护';
@@ -295,7 +344,7 @@ function renderState(state) {
     evoSyncEl.textContent = formatLastSyncTime(evolution?.lastSyncTime || 0);
   }
   if (evoDotEl) {
-    evoDotEl.style.opacity = settings.selfEvolution && settings.enabled ? '1' : '0.35';
+    evoDotEl.style.opacity = settings.selfEvolution && settings.enabled && license?.activated ? '1' : '0.35';
   }
 }
 
@@ -328,6 +377,16 @@ async function loadPopupState() {
 
   try {
     const stored = await chrome.storage.local.get(null);
+    if (!stored.license) {
+      try {
+        const res = await fetch(chrome.runtime.getURL('rules/device_license.json'), { cache: 'no-store' });
+        if (res.ok) {
+          stored.license = await res.json();
+        }
+      } catch {
+        // Ignore fallback license fetch errors
+      }
+    }
     const normalized = normalizeState(stored, activeTab?.id);
     renderState(normalized);
   } catch (err) {
@@ -369,6 +428,64 @@ async function handleSettingChange() {
 }
 
 /**
+ * Handles license key activation from the Gate Overlay
+ */
+async function handleActivateLicenseKey() {
+  const inputEl = document.getElementById('input-license-key');
+  const errorEl = document.getElementById('gate-error-msg');
+  const activateBtn = document.getElementById('btn-activate-key');
+  if (!inputEl || !activateBtn) return;
+
+  const keyStr = inputEl.value.trim().toUpperCase();
+  if (!keyStr) {
+    if (errorEl) {
+      errorEl.classList.remove('is-success');
+      errorEl.textContent = '请先粘贴作者派发的 BTK-... 授权验证码 Key';
+    }
+    inputEl.focus();
+    return;
+  }
+
+  activateBtn.disabled = true;
+  activateBtn.textContent = '🔐 正在校验加密签名...';
+  if (errorEl) {
+    errorEl.classList.remove('is-success');
+    errorEl.textContent = '';
+  }
+
+  try {
+    const resp = await chrome.runtime.sendMessage({
+      type: 'ACTIVATE_LICENSE',
+      key: keyStr
+    });
+
+    if (resp && resp.ok) {
+      if (errorEl) {
+        errorEl.classList.add('is-success');
+        errorEl.textContent = '✅ 授权验证通过！正在解锁并同步作者云端规则...';
+      }
+      inputEl.value = '';
+      await loadPopupState();
+      showToast('🎉 授权激活成功！去广告护盾与云同步已全面开启');
+    } else {
+      const reason = resp?.error || '验证码校验未通过，请核对后重试';
+      if (errorEl) {
+        errorEl.classList.remove('is-success');
+        errorEl.textContent = `❌ ${reason}`;
+      }
+    }
+  } catch (err) {
+    if (errorEl) {
+      errorEl.classList.remove('is-success');
+      errorEl.textContent = `❌ 激活通信异常：${err?.message || '请重试'}`;
+    }
+  } finally {
+    activateBtn.disabled = false;
+    activateBtn.textContent = '🔓 立即验证 Key 并激活去广告护盾';
+  }
+}
+
+/**
  * Binds UI event listeners
  */
 function bindEventListeners() {
@@ -379,6 +496,41 @@ function bindEventListeners() {
         await handleSettingChange();
       });
     }
+  }
+
+  const copyDeviceBtn = document.getElementById('btn-copy-device-id');
+  if (copyDeviceBtn) {
+    copyDeviceBtn.addEventListener('click', async () => {
+      const devId = document.getElementById('gate-device-id')?.textContent?.trim() || '';
+      if (!devId) return;
+      try {
+        await navigator.clipboard.writeText(devId);
+        copyDeviceBtn.textContent = '✅ 已复制';
+        showToast(`已复制本机机器码：${devId}`);
+        setTimeout(() => {
+          copyDeviceBtn.textContent = '📋 复制机器码';
+        }, 1600);
+      } catch {
+        showToast(`本机机器码：${devId}`);
+      }
+    });
+  }
+
+  const activateBtn = document.getElementById('btn-activate-key');
+  if (activateBtn) {
+    activateBtn.addEventListener('click', async () => {
+      await handleActivateLicenseKey();
+    });
+  }
+
+  const licenseInput = document.getElementById('input-license-key');
+  if (licenseInput) {
+    licenseInput.addEventListener('keydown', async (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        await handleActivateLicenseKey();
+      }
+    });
   }
 
   const evolveBtn = document.getElementById('btn-evolve-now');
@@ -394,11 +546,11 @@ function bindEventListeners() {
       try {
         await chrome.runtime.sendMessage({ type: 'TRIGGER_EVOLUTION' });
         await loadPopupState();
-        showToast('自进化完成：已同步最新防屏蔽特征！');
+        showToast('自进化完成：已同步作者最新配置与防屏蔽特征！');
       } catch (err) {
         console.error('[BiliTube Popup] Failed to trigger evolution:', err);
         await loadPopupState();
-        showToast('自进化完成：已同步最新防屏蔽特征！');
+        showToast('自进化完成：已同步作者最新配置与防屏蔽特征！');
       } finally {
         if (evoSyncIcon) evoSyncIcon.classList.remove('spinning');
         if (evolveBtnText) evolveBtnText.textContent = '立即进化';

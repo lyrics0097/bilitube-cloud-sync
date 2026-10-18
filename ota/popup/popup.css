@@ -759,3 +759,230 @@ body {
   opacity: 1;
   transform: translate(-50%, 0);
 }
+
+/* Evolution Card License Status Row */
+.evo-license-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.license-status-badge {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #A7F3D0;
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(16, 185, 129, 0.32);
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.license-status-badge.is-master {
+  color: #FDE68A;
+  background: rgba(245, 158, 11, 0.16);
+  border-color: rgba(245, 158, 11, 0.42);
+}
+
+.license-device-tag {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  color: var(--text-secondary);
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  padding: 1px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+/* License Gate Overlay */
+.license-gate-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: radial-gradient(circle at top, rgba(30, 41, 59, 0.96) 0%, rgba(15, 23, 42, 0.99) 100%);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.gate-card {
+  width: 100%;
+  background: linear-gradient(160deg, rgba(30, 41, 59, 0.96), rgba(15, 23, 42, 0.98));
+  border: 1px solid rgba(251, 114, 153, 0.32);
+  border-radius: 14px;
+  padding: 18px 15px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.55), 0 0 24px rgba(251, 114, 153, 0.08);
+}
+
+.gate-lock-badge {
+  width: 46px;
+  height: 46px;
+  border-radius: 13px;
+  background: linear-gradient(135deg, rgba(251, 114, 153, 0.2), rgba(99, 102, 241, 0.22));
+  border: 1px solid rgba(251, 114, 153, 0.42);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  box-shadow: 0 6px 16px rgba(251, 114, 153, 0.18);
+}
+
+.gate-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: #F8FAFC;
+  letter-spacing: 0.3px;
+}
+
+.gate-subtitle {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.gate-device-box {
+  width: 100%;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: var(--radius-md);
+  padding: 10px 11px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+}
+
+.gate-device-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.gate-device-label {
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+.gate-device-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 14px;
+  font-weight: 800;
+  color: #38BDF8;
+  letter-spacing: 0.6px;
+  user-select: text;
+}
+
+.btn-copy-device {
+  padding: 6px 9px;
+  border-radius: var(--radius-sm);
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.38);
+  color: #BAE6FD;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.18s ease;
+}
+
+.btn-copy-device:hover {
+  background: rgba(56, 189, 248, 0.25);
+  color: #FFFFFF;
+}
+
+.gate-input-group {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+}
+
+.gate-input-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #CBD5E1;
+}
+
+.gate-key-input {
+  width: 100%;
+  padding: 9px 11px;
+  border-radius: var(--radius-sm);
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  color: #F8FAFC;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11.5px;
+  letter-spacing: 0.3px;
+  outline: none;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  user-select: text;
+}
+
+.gate-key-input:focus {
+  border-color: var(--accent-emerald);
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.22);
+}
+
+.gate-error-msg {
+  min-height: 16px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #F87171;
+  line-height: 1.35;
+}
+
+.gate-error-msg.is-success {
+  color: #34D399;
+}
+
+.btn-activate-key {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  color: #FFFFFF;
+  font-size: 12.5px;
+  font-weight: 700;
+  font-family: inherit;
+  border: 1px solid rgba(16, 185, 129, 0.5);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.32);
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.btn-activate-key:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.42);
+}
+
+.btn-activate-key:active {
+  transform: scale(0.98);
+}
+
+.btn-activate-key:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.gate-footnote {
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+

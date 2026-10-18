@@ -108,6 +108,10 @@
           <span class="evo-metric-value" id="evo-last-sync">刚刚</span>
         </div>
       </div>
+      <div class="evo-license-row">
+        <span class="license-status-badge" id="license-status-badge">🔑 已授权 · 与作者配置云同步中</span>
+        <span class="license-device-tag" id="license-device-tag">BT-6AF7-DFAE</span>
+      </div>
     </section>
 
     <!-- Feature Toggle List -->
@@ -230,6 +234,47 @@
         <span>重置统计</span>
       </button>
     </footer>
+  </div>
+
+  <!-- License Activation Gate Overlay -->
+  <div id="license-gate-overlay" class="license-gate-overlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="gate-title">
+    <div class="gate-card">
+      <div class="gate-lock-badge" aria-hidden="true">🔒</div>
+      <h2 class="gate-title" id="gate-title">🔒 设备待授权激活</h2>
+      <p class="gate-subtitle">
+        下载安装已完成！本插件受作者正版授权保护，请输入作者派发的验证码 Key 解锁全部去广告与云同步功能。
+      </p>
+
+      <div class="gate-device-box">
+        <div class="gate-device-info">
+          <span class="gate-device-label">本机专属机器码（发给作者获取 Key）</span>
+          <span class="gate-device-code" id="gate-device-id">BT-0000-0000</span>
+        </div>
+        <button type="button" class="btn-copy-device" id="btn-copy-device-id">📋 复制机器码</button>
+      </div>
+
+      <div class="gate-input-group">
+        <label class="gate-input-label" for="input-license-key">授权验证码 Key</label>
+        <input
+          type="text"
+          id="input-license-key"
+          class="gate-key-input"
+          placeholder="粘贴作者派发的 BTK-... 验证码 Key"
+          autocomplete="off"
+          spellcheck="false"
+        />
+      </div>
+
+      <div id="gate-error-msg" class="gate-error-msg" aria-live="polite"></div>
+
+      <button type="button" class="btn-activate-key" id="btn-activate-key">
+        🔓 立即验证 Key 并激活去广告护盾
+      </button>
+
+      <p class="gate-footnote">
+        激活后将自动开启 B站 &amp; YouTube 深度去广告，并与作者云端规则库实时同步
+      </p>
+    </div>
   </div>
 
   <!-- Toast Notification -->
