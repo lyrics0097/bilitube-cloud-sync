@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
-  "syncVersion": "20261018.202800",
-  "updatedAt": "2026-10-18T20:28:00.041166+08:00",
+  "syncVersion": "20261018.203213",
+  "updatedAt": "2026-10-18T20:32:13.400367+08:00",
   "masterSettings": {
     "enabled": true,
     "bilibiliEnabled": true,
@@ -19,12 +19,12 @@
   },
   "otaFiles": {
     "content/bilibili-main.js": "51d191a3b66addf1f6c492f33d9308688444a76e236d23bd1c6ea06c625323d2",
-    "content/bilibili-isolated.js": "1de0778f41f7ca0f90be684b6811c5370f7d3a9394cb9eb19cbf24a808b32158",
+    "content/bilibili-isolated.js": "7ce246e12966ced0d313294004d8d0abd39bdfda12162f4c3543afc63435d2b0",
     "content/bilibili.css": "d05971dfe2ce8402fd4356d2111e59caed8eb7521ecfc04f8a4d909e88c277d1",
     "content/youtube-main.js": "99e5da58ced8bd8e80e08312dbe920c73d5e1b125235835acfb3bf34fa78390d",
-    "content/youtube-isolated.js": "d0869598a51ae15e039f634bc6ed1731cafe5166ae12ff023b8a1e030e90f21d",
+    "content/youtube-isolated.js": "7d74bb2b4fa9d43de0a5eca985320b344a1ce2faa5e515ba7a3d2ff30790ae92",
     "content/youtube.css": "13b16008c4a7b839d19c9c0f6e6bcfa577a234caa511520e41b6d620400f269f",
-    "background/service-worker.js": "c21a01745dfcb9b56a9f7075957262773a4316c0a18ca3499bd8a926d39c33c0",
+    "background/service-worker.js": "859a68588ab56e747c711888a47adb6021c1e0e6d3d085aa9f98beb08822ba3c",
     "popup/popup.html": "7e0be9ef282b9fec76806ac1153b12e7bd1d490ba6504ff6d726072bfb0e187d",
     "popup/popup.css": "040cad2547fbbba0f5901dc3e6b0b03c188833b7d7c263c6dbebeea084706afe",
     "popup/popup.js": "602de4d38cf57586475b071728cab25eff273c3368038f36aac07143eab9177d",

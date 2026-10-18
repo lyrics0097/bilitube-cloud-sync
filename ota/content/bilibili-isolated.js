@@ -271,14 +271,21 @@
 
   function normalizeStoredSettings(stored) {
     if (!stored || typeof stored !== 'object') return { ...DEFAULT_SETTINGS };
+    const isLocked =
+      stored.license && typeof stored.license === 'object' && stored.license.activated === false;
     const base =
       stored.settings && typeof stored.settings === 'object'
         ? { ...stored, ...stored.settings }
         : stored;
     return {
-      enabled: typeof base.enabled === 'boolean' ? base.enabled : DEFAULT_SETTINGS.enabled,
-      bilibiliEnabled:
-        typeof base.bilibiliEnabled === 'boolean'
+      enabled: isLocked
+        ? false
+        : typeof base.enabled === 'boolean'
+          ? base.enabled
+          : DEFAULT_SETTINGS.enabled,
+      bilibiliEnabled: isLocked
+        ? false
+        : typeof base.bilibiliEnabled === 'boolean'
           ? base.bilibiliEnabled
           : DEFAULT_SETTINGS.bilibiliEnabled,
       bilibiliLiveFilter:
@@ -313,7 +320,7 @@
 
   async function loadSettingsAndEvolution() {
     try {
-      const stored = await chrome.storage.local.get(['settings', 'evolution']);
+      const stored = await chrome.storage.local.get(['settings', 'evolution', 'license']);
       currentSettings = normalizeStoredSettings(stored);
       evolutionState = normalizeEvolutionState(stored);
       applyDatasetFlags();
@@ -672,9 +679,12 @@
         if (message.evolution && typeof message.evolution === 'object') {
           evolutionState = normalizeEvolutionState({ evolution: message.evolution });
         } else {
-          const stored = await chrome.storage.local.get(['settings', 'evolution']);
+          const stored = await chrome.storage.local.get(['settings', 'evolution', 'license']);
           currentSettings = normalizeStoredSettings(stored);
           evolutionState = normalizeEvolutionState(stored);
+        }
+        if (message.settings && typeof message.settings === 'object') {
+          currentSettings = normalizeStoredSettings(message.settings);
         }
         applyDatasetFlags();
         applyEvolvedStyles();
@@ -688,12 +698,12 @@
     return true;
   });
 
-  // Keep in sync with storage changes (settings & evolution)
+  // Keep in sync with storage changes (settings, evolution & license)
   chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName !== 'local') return;
-    if (!changes.settings && !changes.evolution) return;
+    if (!changes.settings && !changes.evolution && !changes.license) return;
     (async () => {
-      const stored = await chrome.storage.local.get(['settings', 'evolution']);
+      const stored = await chrome.storage.local.get(['settings', 'evolution', 'license']);
       currentSettings = normalizeStoredSettings(stored);
       evolutionState = normalizeEvolutionState(stored);
       applyDatasetFlags();

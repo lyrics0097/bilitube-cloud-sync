@@ -1089,7 +1089,13 @@ async function applyCompiledDynamicRules(conditions, settings) {
   }
 }
 
-async function broadcastEvolutionToTabs(evolution, settings) {
+async function broadcastEvolutionToTabs(evolution, settings, license = null) {
+  let activeLicense = license;
+  if (!activeLicense) {
+    const stored = await chrome.storage.local.get(['license']);
+    activeLicense = stored.license || (await loadAndVerifyLicense());
+  }
+  const effectiveSettings = getEffectiveSettings(settings, activeLicense);
   try {
     const openTabs = await chrome.tabs.query({
       url: [
@@ -1104,7 +1110,7 @@ async function broadcastEvolutionToTabs(evolution, settings) {
         await chrome.tabs.sendMessage(tab.id, {
           type: 'EVOLUTION_UPDATED',
           evolution,
-          settings
+          settings: effectiveSettings
         });
       } catch {
         // Content script may not be ready in some tabs yet
@@ -1115,8 +1121,89 @@ async function broadcastEvolutionToTabs(evolution, settings) {
   }
 }
 
+function ingestSnapshotObject(
+  snapshot,
+  biliCosmeticsSet,
+  ytCosmeticsSet,
+  biliPruneSet,
+  ytPruneSet,
+  compiledNetworkMap
+) {
+  if (!snapshot || typeof snapshot !== 'object') return null;
+
+  const snapBiliCos = snapshot.biliCosmetics || snapshot.bilibiliCosmetics || snapshot.biliSelectors || [];
+  for (const sel of snapBiliCos) {
+    if (isValidCssSelector(sel) && isSafeBiliSelector(sel) && biliCosmeticsSet.size < MAX_COSMETIC_SELECTORS) {
+      biliCosmeticsSet.add(sel.trim());
+    }
+  }
+
+  const snapYtCos = snapshot.ytCosmetics || snapshot.youtubeCosmetics || snapshot.ytSelectors || [];
+  for (const sel of snapYtCos) {
+    if (isValidCssSelector(sel) && ytCosmeticsSet.size < MAX_COSMETIC_SELECTORS) {
+      ytCosmeticsSet.add(sel.trim());
+    }
+  }
+
+  const snapBiliPrune = snapshot.biliPruneKeys || snapshot.bilibiliPruneKeys || [];
+  for (const key of snapBiliPrune) {
+    if (typeof key === 'string' && key.trim()) biliPruneSet.add(key.trim());
+  }
+
+  const snapYtPrune = snapshot.ytPruneKeys || snapshot.youtubePruneKeys || [];
+  for (const key of snapYtPrune) {
+    if (typeof key === 'string' && key.trim() && isSafeYtPruneKey(key.trim())) {
+      ytPruneSet.add(key.trim());
+    }
+  }
+
+  const snapNetwork = snapshot.dnrRules || snapshot.dynamicRules || snapshot.networkRules || [];
+  for (const item of snapNetwork) {
+    if (compiledNetworkMap.size >= MAX_DYNAMIC_RULES) break;
+    if (typeof item === 'string') {
+      const compiled = compileNetworkRuleToDnr(item.trim());
+      if (compiled && !compiledNetworkMap.has(compiled.urlFilterKey)) {
+        compiledNetworkMap.set(compiled.urlFilterKey, compiled.condition);
+      }
+    } else if (item && typeof item === 'object') {
+      const cond = item.condition && typeof item.condition === 'object' ? item.condition : item;
+      if (cond && typeof cond.urlFilter === 'string' && cond.urlFilter.trim()) {
+        const uf = cond.urlFilter.toLowerCase();
+        if (
+          uf.includes('index/top/feed') ||
+          uf.includes('res/locs') ||
+          uf.includes('/x/v2/dm/') ||
+          uf.includes('short/config') ||
+          uf.includes('special/recommend')
+        ) {
+          continue;
+        }
+        const key = `${cond.urlFilter}|${(cond.initiatorDomains || []).join(',')}`;
+        if (!compiledNetworkMap.has(key)) {
+          compiledNetworkMap.set(key, cond);
+        }
+      }
+    }
+  }
+
+  if (Array.isArray(snapshot.rawFilterLines)) {
+    parseFilterText(
+      snapshot.rawFilterLines.join('\n'),
+      biliCosmeticsSet,
+      ytCosmeticsSet,
+      biliPruneSet,
+      ytPruneSet,
+      compiledNetworkMap
+    );
+  }
+
+  return Array.isArray(snapshot.ytTextReplaces) && snapshot.ytTextReplaces.length > 0
+    ? snapshot.ytTextReplaces
+    : null;
+}
+
 async function runSelfEvolutionSync(reason = 'auto') {
-  const { settings, evolution: currentEvo } = await getStoredData();
+  let { settings, stats, evolution: currentEvo, license } = await getStoredData(true);
 
   const biliCosmeticsSet = new Set((currentEvo.biliCosmetics || []).filter(isSafeBiliSelector));
   const ytCosmeticsSet = new Set(currentEvo.ytCosmetics || []);
@@ -1133,70 +1220,96 @@ async function runSelfEvolutionSync(reason = 'auto') {
     : [...DEFAULT_EVOLUTION.ytTextReplaces];
   const compiledNetworkMap = new Map();
   const activeSources = [];
+  let liveSuccessCount = 0;
 
-  // 1. Load local rules/evolved_snapshot.json as baseline seed
-  const snapshot = await loadLocalSnapshot();
-  if (snapshot) {
-    activeSources.push('本地快照');
-    const snapBiliCos = snapshot.biliCosmetics || snapshot.bilibiliCosmetics || snapshot.biliSelectors || [];
-    for (const sel of snapBiliCos) {
-      if (isValidCssSelector(sel) && isSafeBiliSelector(sel) && biliCosmeticsSet.size < MAX_COSMETIC_SELECTORS) {
-        biliCosmeticsSet.add(sel.trim());
-      }
-    }
-    const snapYtCos = snapshot.ytCosmetics || snapshot.youtubeCosmetics || snapshot.ytSelectors || [];
-    for (const sel of snapYtCos) {
-      if (isValidCssSelector(sel) && ytCosmeticsSet.size < MAX_COSMETIC_SELECTORS) {
-        ytCosmeticsSet.add(sel.trim());
-      }
-    }
-    const snapBiliPrune = snapshot.biliPruneKeys || snapshot.bilibiliPruneKeys || [];
-    for (const key of snapBiliPrune) {
-      if (typeof key === 'string' && key.trim()) biliPruneSet.add(key.trim());
-    }
-    const snapYtPrune = snapshot.ytPruneKeys || snapshot.youtubePruneKeys || [];
-    for (const key of snapYtPrune) {
-      if (typeof key === 'string' && key.trim()) ytPruneSet.add(key.trim());
-    }
-    if (Array.isArray(snapshot.ytTextReplaces) && snapshot.ytTextReplaces.length > 0) {
-      ytTextReplaces = snapshot.ytTextReplaces;
-    }
+  let masterSyncVersion = Number(currentEvo.masterSyncVersion) || 0;
+  let lastMasterSyncVersion = Number(currentEvo.lastMasterSyncVersion ?? currentEvo.masterSyncVersion) || 0;
+  let cloudAnnouncement = typeof currentEvo.cloudAnnouncement === 'string' ? currentEvo.cloudAnnouncement : '';
 
-    const snapNetwork = snapshot.dynamicRules || snapshot.dnrRules || snapshot.networkRules || [];
-    for (const item of snapNetwork) {
-      if (compiledNetworkMap.size >= MAX_DYNAMIC_RULES) break;
-      if (typeof item === 'string') {
-        const compiled = compileNetworkRuleToDnr(item.trim());
-        if (compiled && !compiledNetworkMap.has(compiled.urlFilterKey)) {
-          compiledNetworkMap.set(compiled.urlFilterKey, compiled.condition);
-        }
-      } else if (item && typeof item === 'object' && item.condition && item.condition.urlFilter) {
-        const uf = String(item.condition.urlFilter || '').toLowerCase();
-        if (
-          uf.includes('index/top/feed') ||
-          uf.includes('res/locs') ||
-          uf.includes('/x/v2/dm/') ||
-          uf.includes('short/config') ||
-          uf.includes('special/recommend')
-        ) {
-          continue;
-        }
-        const key = `${item.condition.urlFilter}|${(item.condition.initiatorDomains || []).join(',')}`;
-        if (!compiledNetworkMap.has(key)) {
-          compiledNetworkMap.set(key, item.condition);
-        }
+  // 0. Fetch Author Cloud Hub (lyrics0097/bilitube-cloud-sync) first with 6s timeout
+  const cloudRes = await fetchAuthorCloudManifest(6000);
+  if (cloudRes.ok && cloudRes.manifest) {
+    const cloudManifest = cloudRes.manifest;
+    liveSuccessCount++;
+    activeSources.push('作者云端中枢');
+
+    if (cloudManifest.authPolicy && typeof cloudManifest.authPolicy === 'object') {
+      const nextAuthPolicy = {
+        revokedKeys: Array.isArray(cloudManifest.authPolicy.revokedKeys)
+          ? cloudManifest.authPolicy.revokedKeys
+          : [],
+        revokedDevices: Array.isArray(cloudManifest.authPolicy.revokedDevices)
+          ? cloudManifest.authPolicy.revokedDevices
+          : [],
+        announcement: typeof cloudManifest.authPolicy.announcement === 'string'
+          ? cloudManifest.authPolicy.announcement
+          : ''
+      };
+      cloudAnnouncement = nextAuthPolicy.announcement;
+      await chrome.storage.local.set({ authPolicy: nextAuthPolicy });
+
+      const wasActivated = license.activated;
+      license = await loadAndVerifyLicense(nextAuthPolicy);
+      if (wasActivated && !license.activated) {
+        await enforceLicenseState(license, settings, stats, currentEvo);
       }
     }
 
-    if (Array.isArray(snapshot.rawFilterLines)) {
-      parseFilterText(
-        snapshot.rawFilterLines.join('\n'),
+    const incomingSyncVer = Number(cloudManifest.syncVersion) || 0;
+    if (incomingSyncVer > 0) {
+      masterSyncVersion = incomingSyncVer;
+    }
+
+    if (
+      cloudManifest.masterSettings &&
+      typeof cloudManifest.masterSettings === 'object' &&
+      ((incomingSyncVer > lastMasterSyncVersion && !license.masterOwner) ||
+        (reason === 'manual' && !license.masterOwner) ||
+        (reason === 'activation' && !license.masterOwner))
+    ) {
+      const mergedSettings = { ...settings };
+      for (const key of Object.keys(DEFAULT_SETTINGS)) {
+        if (typeof cloudManifest.masterSettings[key] === 'boolean') {
+          mergedSettings[key] = cloudManifest.masterSettings[key];
+        }
+      }
+      settings = mergedSettings;
+      lastMasterSyncVersion = incomingSyncVer || lastMasterSyncVersion;
+      await chrome.storage.local.set({ settings });
+      await enforceLicenseState(license, settings, stats, currentEvo);
+    } else if (incomingSyncVer > lastMasterSyncVersion) {
+      lastMasterSyncVersion = incomingSyncVer;
+    }
+
+    if (cloudManifest.evolutionSnapshot && typeof cloudManifest.evolutionSnapshot === 'object') {
+      const cloudReplaces = ingestSnapshotObject(
+        cloudManifest.evolutionSnapshot,
         biliCosmeticsSet,
         ytCosmeticsSet,
         biliPruneSet,
         ytPruneSet,
         compiledNetworkMap
       );
+      if (cloudReplaces) {
+        ytTextReplaces = cloudReplaces;
+      }
+    }
+  }
+
+  // 1. Load local rules/evolved_snapshot.json as baseline seed
+  const snapshot = await loadLocalSnapshot();
+  if (snapshot) {
+    activeSources.push('本地快照');
+    const snapReplaces = ingestSnapshotObject(
+      snapshot,
+      biliCosmeticsSet,
+      ytCosmeticsSet,
+      biliPruneSet,
+      ytPruneSet,
+      compiledNetworkMap
+    );
+    if (snapReplaces && (!cloudRes.ok || !cloudRes.manifest?.evolutionSnapshot?.ytTextReplaces)) {
+      ytTextReplaces = snapReplaces;
     }
   }
 
@@ -1205,7 +1318,6 @@ async function runSelfEvolutionSync(reason = 'auto') {
     UPSTREAM_FEEDS.map((feed) => fetchFeedWithFallback(feed, 8000))
   );
 
-  let liveSuccessCount = 0;
   for (const res of feedResults) {
     if (res.ok && res.text) {
       liveSuccessCount++;
@@ -1221,9 +1333,10 @@ async function runSelfEvolutionSync(reason = 'auto') {
     }
   }
 
-  // 3. Apply compiled dynamic DNR rules
+  // 3. Apply compiled dynamic DNR rules (respecting license activation state)
+  const effectiveSettings = getEffectiveSettings(settings, license);
   const conditions = Array.from(compiledNetworkMap.values());
-  const dynamicDnrCount = await applyCompiledDynamicRules(conditions, settings);
+  const dynamicDnrCount = await applyCompiledDynamicRules(conditions, effectiveSettings);
 
   const biliCosmetics = Array.from(biliCosmeticsSet).slice(0, MAX_COSMETIC_SELECTORS);
   const ytCosmetics = Array.from(ytCosmeticsSet).slice(0, MAX_COSMETIC_SELECTORS);
@@ -1258,29 +1371,42 @@ async function runSelfEvolutionSync(reason = 'auto') {
     learnedBiliSelectors,
     learnedYtSelectors,
     learnedCount,
-    totalActiveSignatures
+    totalActiveSignatures,
+    masterSyncVersion,
+    lastMasterSyncVersion,
+    cloudAnnouncement
   });
 
   await chrome.storage.local.set({ evolution: nextEvolution });
-  await broadcastEvolutionToTabs(nextEvolution, settings);
+  await broadcastEvolutionToTabs(nextEvolution, settings, license);
   return nextEvolution;
 }
 
 async function ensureEvolutionAlarm() {
   try {
     await chrome.alarms.create(AUTO_EVOLVE_ALARM, {
-      periodInMinutes: 180
+      periodInMinutes: 60
     });
   } catch (err) {
     console.warn('[BiliTube AdShield] Failed to schedule alarm:', err);
   }
 }
 
+// Immediately verify license and enforce state when service worker wakes up
+(async () => {
+  try {
+    const { settings, stats, evolution, license } = await getStoredData(true);
+    await enforceLicenseState(license, settings, stats, evolution);
+  } catch {
+    // Ignore early wake errors
+  }
+})();
+
 chrome.runtime.onInstalled.addListener(() => {
   (async () => {
-    const { settings, stats, evolution } = await getStoredData();
-    await chrome.storage.local.set({ settings, stats, evolution });
-    await syncRulesets(settings);
+    const { settings, stats, evolution, license } = await getStoredData(true);
+    await chrome.storage.local.set({ settings, stats, evolution, license });
+    await enforceLicenseState(license, settings, stats, evolution);
     await ensureEvolutionAlarm();
     await runSelfEvolutionSync('startup');
   })();
@@ -1288,8 +1414,8 @@ chrome.runtime.onInstalled.addListener(() => {
 
 chrome.runtime.onStartup.addListener(() => {
   (async () => {
-    const { settings } = await getStoredData();
-    await syncRulesets(settings);
+    const { settings, stats, evolution, license } = await getStoredData(true);
+    await enforceLicenseState(license, settings, stats, evolution);
     await ensureEvolutionAlarm();
     await runSelfEvolutionSync('startup');
   })();
@@ -1298,7 +1424,7 @@ chrome.runtime.onStartup.addListener(() => {
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (!alarm || alarm.name !== AUTO_EVOLVE_ALARM) return;
   (async () => {
-    const { settings } = await getStoredData();
+    const { settings } = await getStoredData(true);
     if (settings.enabled && settings.selfEvolution) {
       await runSelfEvolutionSync('alarm');
     }
@@ -1364,11 +1490,11 @@ async function ensureContentScriptsInjected(tabId, site, settings) {
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.status !== 'loading') return;
   (async () => {
-    const { settings, stats } = await getStoredData();
+    const { settings, stats, license } = await getStoredData();
     const site = detectSiteFromUrl(tab?.url || changeInfo.url);
     stats.tabCounts[String(tabId)] = 0;
     await chrome.storage.local.set({ stats });
-    await updateTabBadge(tabId, 0, site, settings.enabled);
+    await updateTabBadge(tabId, 0, site, settings.enabled, license.activated);
   })();
 });
 
@@ -1381,7 +1507,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
 
       if (message.type === 'RECORD_BLOCK') {
-        const { settings, stats } = await getStoredData();
+        const { settings, stats, license } = await getStoredData();
+        if (!license.activated) {
+          const tabId = sender?.tab?.id ?? message.tabId;
+          if (typeof tabId === 'number') {
+            await updateTabBadge(tabId, 0, 'default', false, false);
+          }
+          sendResponse({ ok: false, locked: true, stats, tabCount: 0 });
+          return;
+        }
+
         const count = Math.max(1, Number(message.count) || 1);
         const site = message.site === 'youtube' ? 'youtube' : 'bilibili';
         const savedSeconds = Number(message.savedSeconds) > 0
@@ -1402,7 +1537,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           const key = String(tabId);
           tabCount = (stats.tabCounts[key] || 0) + count;
           stats.tabCounts[key] = tabCount;
-          await updateTabBadge(tabId, tabCount, site, settings.enabled);
+          await updateTabBadge(tabId, tabCount, site, settings.enabled, license.activated);
         }
 
         await chrome.storage.local.set({ stats });
@@ -1411,7 +1546,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
 
       if (message.type === 'GET_STATE') {
-        const { settings, stats, evolution } = await getStoredData();
+        const prevStored = await chrome.storage.local.get(['license']);
+        const wasActivated = Boolean(prevStored.license?.activated);
+        const { settings, stats, evolution, license } = await getStoredData(true);
+
+        if (!wasActivated && license.activated) {
+          await enforceLicenseState(license, settings, stats, evolution);
+          void runSelfEvolutionSync('activation');
+        } else if (wasActivated && !license.activated) {
+          await enforceLicenseState(license, settings, stats, evolution);
+        }
+
         let targetTabId = message.tabId ?? sender?.tab?.id;
         if (typeof targetTabId !== 'number') {
           const activeTabs = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -1422,18 +1567,65 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const tabCount = typeof targetTabId === 'number'
           ? (stats.tabCounts[String(targetTabId)] || 0)
           : 0;
-        sendResponse({ ok: true, settings, stats, tabCount, evolution });
+        sendResponse({ ok: true, settings, stats, tabCount, evolution, license });
+        return;
+      }
+
+      if (message.type === 'ACTIVATE_LICENSE') {
+        const { settings, stats, evolution, license: currentLicense, authPolicy } = await getStoredData(true);
+        const inputKey = String(message.key || '').trim();
+        const verifyRes = await verifyActivationKey(inputKey, currentLicense.deviceId, authPolicy);
+
+        if (!verifyRes.valid) {
+          const failedLicense = {
+            ...currentLicense,
+            activated: false,
+            statusText: verifyRes.reason,
+            lastCheckedAt: Date.now()
+          };
+          await chrome.storage.local.set({ license: failedLicense });
+          await enforceLicenseState(failedLicense, settings, stats, evolution);
+          sendResponse({ ok: false, error: verifyRes.reason, license: failedLicense });
+          return;
+        }
+
+        const fileLic = await loadDeviceLicenseFile();
+        const masterOwner = Boolean(
+          fileLic?.masterOwner && currentLicense.deviceId === AUTHOR_HARDWARE_ID
+        );
+
+        const activatedLicense = {
+          deviceId: currentLicense.deviceId,
+          activated: true,
+          masterOwner,
+          activationKey: verifyRes.key,
+          expiresAt: verifyRes.expiry,
+          mode: verifyRes.mode,
+          statusText: masterOwner ? '作者主控本机' : '已授权 · 与作者配置云同步中',
+          lastCheckedAt: Date.now()
+        };
+
+        await chrome.storage.local.set({ license: activatedLicense });
+        await enforceLicenseState(activatedLicense, settings, stats, evolution);
+        void runSelfEvolutionSync('activation');
+
+        sendResponse({ ok: true, license: activatedLicense });
         return;
       }
 
       if (message.type === 'TRIGGER_EVOLUTION') {
         const evolution = await runSelfEvolutionSync('manual');
-        sendResponse({ ok: true, evolution });
+        const { settings, license } = await getStoredData();
+        sendResponse({ ok: true, evolution, settings, license });
         return;
       }
 
       if (message.type === 'REPORT_LEARNED_HEURISTIC') {
-        const { settings, evolution } = await getStoredData();
+        const { settings, evolution, license } = await getStoredData();
+        if (!license.activated) {
+          sendResponse({ ok: false, locked: true, evolution });
+          return;
+        }
         const site = message.site === 'youtube' ? 'youtube' : 'bilibili';
         const selector = typeof message.selector === 'string' ? message.selector.trim() : '';
         const pruneKey = typeof message.pruneKey === 'string' ? message.pruneKey.trim() : '';
@@ -1481,7 +1673,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const nextEvolution = normalizeEvolution(evolution);
         if (updated) {
           await chrome.storage.local.set({ evolution: nextEvolution });
-          await broadcastEvolutionToTabs(nextEvolution, settings);
+          await broadcastEvolutionToTabs(nextEvolution, settings, license);
         }
 
         sendResponse({ ok: true, evolution: nextEvolution });
@@ -1489,7 +1681,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
 
       if (message.type === 'UPDATE_SETTINGS') {
-        const { settings: currentSettings, stats, evolution } = await getStoredData();
+        const { settings: currentSettings, stats, evolution, license } = await getStoredData(true);
         const incoming = message.settings && typeof message.settings === 'object'
           ? message.settings
           : message;
@@ -1510,12 +1702,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           nextSettings.youtubeEnabled !== currentSettings.youtubeEnabled ||
           nextSettings.selfEvolution !== currentSettings.selfEvolution
         ) {
-          await syncRulesets(nextSettings);
-          if (nextSettings.enabled && nextSettings.selfEvolution && !currentSettings.selfEvolution) {
+          await syncRulesets(nextSettings, license);
+          if (license.activated && nextSettings.enabled && nextSettings.selfEvolution && !currentSettings.selfEvolution) {
             await runSelfEvolutionSync('settings-enabled');
           }
         }
 
+        const effectiveSettings = getEffectiveSettings(nextSettings, license);
         const openTabs = await chrome.tabs.query({
           url: [
             '*://*.bilibili.com/*',
@@ -1528,11 +1721,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           if (typeof tab.id !== 'number') continue;
           const site = detectSiteFromUrl(tab.url);
           const tabCount = stats.tabCounts[String(tab.id)] || 0;
-          await updateTabBadge(tab.id, tabCount, site, nextSettings.enabled);
+          await updateTabBadge(tab.id, tabCount, site, nextSettings.enabled, license.activated);
           try {
             await chrome.tabs.sendMessage(tab.id, {
               type: 'SETTINGS_UPDATED',
-              settings: nextSettings,
+              settings: effectiveSettings,
               evolution
             });
           } catch {
@@ -1540,12 +1733,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           }
         }
 
-        sendResponse({ ok: true, settings: nextSettings, evolution });
+        sendResponse({ ok: true, settings: nextSettings, evolution, license });
         return;
       }
 
       if (message.type === 'RESET_STATS') {
-        const { settings } = await getStoredData();
+        const { settings, license } = await getStoredData();
         const resetStats = {
           ...DEFAULT_STATS,
           tabCounts: {}
@@ -1556,7 +1749,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         for (const tab of allTabs) {
           if (typeof tab.id === 'number') {
             const site = detectSiteFromUrl(tab.url);
-            await updateTabBadge(tab.id, 0, site, settings.enabled);
+            await updateTabBadge(tab.id, 0, site, settings.enabled, license.activated);
           }
         }
 
