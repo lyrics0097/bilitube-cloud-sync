@@ -1,0 +1,39 @@
+/**
+ * BiliTube AdShield Pro v2.0.0 — YouTube Cosmetic Filter Stylesheet
+ * Scoped under html:not([data-bilitube-yt-enabled="false"]) so user toggles
+ * take effect instantaneously without page reload.
+ */
+
+html:not([data-bilitube-yt-enabled="false"]) :is(
+  ytd-ad-slot-renderer,
+  ytd-rich-item-renderer:has(> ytd-ad-slot-renderer),
+  ytd-rich-item-renderer:has(ytd-ad-slot-renderer),
+  ytd-rich-item-renderer:has(ytd-in-feed-ad-layout-renderer),
+  ytd-in-feed-ad-layout-renderer,
+  ytd-promoted-sparkles-web-renderer,
+  ytd-promoted-video-renderer,
+  ytd-compact-promoted-video-renderer,
+  ytd-masthead-ad-v3-renderer,
+  ytd-statement-banner-renderer,
+  ytd-banner-promo-renderer,
+  .ytd-brand-video-shelf-renderer,
+  #panels ytd-ad-slot-renderer,
+  ytd-reel-video-renderer:has(.ytd-ad-slot-renderer),
+  .ytp-ad-overlay-container,
+  .ytp-ad-message-container,
+  .ytp-ad-progress-list,
+  ytd-enforcement-message-view-model,
+  #movie_player .ytp-right-controls #startSegmentButton,
+  #movie_player .ytp-right-controls #cancelSegmentButton,
+  #movie_player .ytp-right-controls #deleteButton,
+  #movie_player .ytp-right-controls #submitButton
+) {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+}

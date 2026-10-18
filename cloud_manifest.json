@@ -1,0 +1,552 @@
+{
+  "schemaVersion": 2,
+  "syncVersion": "20261018.202800",
+  "updatedAt": "2026-10-18T20:28:00.041166+08:00",
+  "masterSettings": {
+    "enabled": true,
+    "bilibiliEnabled": true,
+    "bilibiliLiveFilter": true,
+    "bilibiliCleanUrl": true,
+    "youtubeEnabled": true,
+    "youtubeAntiDetect": true,
+    "selfEvolution": true
+  },
+  "authPolicy": {
+    "requireKey": true,
+    "revokedKeys": [],
+    "revokedDevices": [],
+    "announcement": "🎉 已与作者主控端建立实时云同步，配置与去广告规则自动保持最新！"
+  },
+  "otaFiles": {
+    "content/bilibili-main.js": "51d191a3b66addf1f6c492f33d9308688444a76e236d23bd1c6ea06c625323d2",
+    "content/bilibili-isolated.js": "1de0778f41f7ca0f90be684b6811c5370f7d3a9394cb9eb19cbf24a808b32158",
+    "content/bilibili.css": "d05971dfe2ce8402fd4356d2111e59caed8eb7521ecfc04f8a4d909e88c277d1",
+    "content/youtube-main.js": "99e5da58ced8bd8e80e08312dbe920c73d5e1b125235835acfb3bf34fa78390d",
+    "content/youtube-isolated.js": "d0869598a51ae15e039f634bc6ed1731cafe5166ae12ff023b8a1e030e90f21d",
+    "content/youtube.css": "13b16008c4a7b839d19c9c0f6e6bcfa577a234caa511520e41b6d620400f269f",
+    "background/service-worker.js": "c21a01745dfcb9b56a9f7075957262773a4316c0a18ca3499bd8a926d39c33c0",
+    "popup/popup.html": "7e0be9ef282b9fec76806ac1153b12e7bd1d490ba6504ff6d726072bfb0e187d",
+    "popup/popup.css": "040cad2547fbbba0f5901dc3e6b0b03c188833b7d7c263c6dbebeea084706afe",
+    "popup/popup.js": "602de4d38cf57586475b071728cab25eff273c3368038f36aac07143eab9177d",
+    "rules/bilibili_rules.json": "6cae99e664a3f2ad0ff9bd880048671f67d78b5547cdc8ced204419030580255",
+    "rules/youtube_rules.json": "23f9ad830453efa722fe4c5e8d10eb37e2dfccf746aa1e63624ea0ef01f953b0"
+  },
+  "evolutionSnapshot": {
+    "version": "2.0.0",
+    "generatedAt": "2026-10-18T12:07:37.799301+00:00",
+    "timestamp": 1792325257799,
+    "signatureHash": "5bcadd75943556b4",
+    "sourceCount": 4,
+    "biliCosmetics": [
+      ".feed-card:has(.bili-video-card__info--ad)",
+      ".bili-feed-card:has(.bili-video-card__info--ad)",
+      ".feed-card:has(.bili-video-card__info--synergy)",
+      ".bili-feed-card:has(.bili-video-card__info--synergy)",
+      ".feed-card:has(.bili-live-card)",
+      ".bili-feed-card:has(.bili-live-card)",
+      ".floor-single-card",
+      ".bili-live-card.is-rcmd",
+      "#slide_ad",
+      "#right-bottom-banner",
+      ".ad-report",
+      ".ad-floor-exp",
+      ".video-page-special-card-small",
+      ".video-page-game-card-small",
+      ".bili-dyn-ads",
+      ".bpx-player-Promote-wrap",
+      ".bpx-player-toast-wrap:has(.bpx-player-toast-promote)",
+      ".eva-banner",
+      ".activity-m-v1",
+      ".palette-button-ad",
+      ".vip-login-tip",
+      ".layerWrapperRoot > div[class^=\"_root_bhaoj_\"]",
+      ".container > .bili-feed-card:has(> div.bili-video-card div.bili-video-card__info--no-interest + h3 > a[target=\"_blank\"]:not([href^=\"https://www.bilibili.com/\"]))",
+      ".container > div.feed-card:empty",
+      ".recommended-swipe-body-normal div.vui_carousel__slide:has(> div.carousel-area > div.carousel-area-img > a > img[src$=\"/eva.png\"])",
+      ".feed-card:has(> div.bili-feed-card > div > div > div.bili-video-card__no-interest + a[target=\"_blank\"]:not([href^=\"https://www.bilibili.com/\"]))",
+      ".bili-feed-card:has(> div.bili-video-card[style*=\"display: none !important;\"])",
+      ".video-list > div:has(> .bili-video-card > .bili-video-card__wrap > .bili-video-card__info > .bili-video-card__info--right > .ad-feedback-entry)",
+      ".container > div.bili-video-card.is-rcmd:not(:has(> *))",
+      ".floor-single-card:has(.floor-skeleton):not(:has(> div.bili-video-card__skeleton))",
+      ".bili-video-card.is-rcmd:has(> div.bili-video-card__wrap .bili-video-card__stats--icon > path[d*=\"M16.9122 1.50323C17.4366 1.48358 17.99745 1.54938 18.4701 1.8207C18.9423 2.09168 19.28085\"])",
+      ".activity-slider[style=\"width: 1220px;\"]",
+      ".ad-e1",
+      ".ad-f",
+      ".adcard-content",
+      ".banner-card",
+      ".bili-video-card__wrap > a[href^=\"http\"]:not([href*=\".bilibili.com/\"])",
+      ".container-wrapper[style=\"height:180px;min-width:1280px\"]",
+      ".container-wrapper[style=\"height:446px;min-width:1280px\"]",
+      ".gg-floor-module",
+      ".index-promote",
+      ".layerWrapperRoot > div[style^=\"width: 1220px;\"]",
+      ".online + .adpos",
+      ".operate-card[data-target-url*=\".miaozhen.\"]",
+      ".operate-card[data-target-url*=\"doubleclick.\"]",
+      ".recommended-swipe .carousel-footer-title > a[href^=\"http\"]:not([href*=\".bilibili.com/\"])",
+      ".title > span > a[href^=\"http\"]:not([href*=\".bilibili.\"])",
+      ".topic-preview > li > a[href^=\"http\"]:not([href*=\".bilibili.\"])",
+      "a[data-target-url*=\".taobao.com\"]",
+      "a[href$=\"_suning.html\"]",
+      "a[href*=\".admaster.\"]",
+      "a[href*=\".doubleclick.\"]",
+      "a[href*=\"cm.bilibili.com\"][data-target-url*=\"gaoneng.bilibili.com\"]",
+      "a[href*=\"cm.bilibili.com\"][data-target-url*=\"gaoneng.bilibili.com\"] + .bili-video-card__info",
+      "a[href*=\"cm.bilibili.com\"][data-target-url]:not([data-target-url*=\".bilibili.com/\"])",
+      "a[href*=\"cm.bilibili.com\"][data-target-url]:not([data-target-url*=\".bilibili.com/\"]) + .bili-video-card__info",
+      "a[href=\"/video/av8587236/?tg\"]",
+      ".video-card-common:has(> .card-pic > a[href*=\"cm.bilibili.com\"][data-target-url])",
+      ".video-page-special-card-small:has(> .card-box > .info > a[href^=\"http\"]:not([href*=\".bilibili.com/\"]))",
+      "div[style*=\"height:\"][data-loc-id]",
+      "span[style*=\"height:\"][data-loc-id]",
+      ".ad-report, .ad-floor",
+      ".gg-floor-module,#slide_ad,a[href^=\"//cm.bilibili.com\"]",
+      ".extension-tips",
+      "A[href*=\"cm.bilibili.com\"][data-target-url*=\".biligame.\"]",
+      "A[href*=\"cm.bilibili.com\"][data-target-url*=\".biligame.\"] + .bili-video-card__info",
+      ".adblock-tips",
+      ".desktop-download-tip",
+      ".video-page-game-card",
+      "#b_app_link",
+      "#fixed_app_download"
+    ],
+    "ytCosmetics": [
+      "ytd-ad-slot-renderer",
+      "ytd-in-feed-ad-layout-renderer",
+      "ytd-promoted-sparkles-web-renderer",
+      "ytd-promoted-video-renderer",
+      "ytd-display-ad-renderer",
+      "ytd-statement-banner-renderer",
+      "ytd-banner-promo-renderer",
+      "ytd-video-masthead-ad-v3-renderer",
+      "ytd-engagement-panel-section-list-renderer[target-id=\"engagement-panel-ads\"]",
+      "ytd-merch-shelf-renderer",
+      "ytd-player-legacy-desktop-watch-ads-renderer",
+      "ytd-rich-item-renderer:has(> #content > ytd-ad-slot-renderer)",
+      "ytd-rich-section-renderer:has(ytd-statement-banner-renderer)",
+      "ytd-reel-video-renderer:has(ytd-ad-slot-renderer)",
+      ".ytp-ad-overlay-container",
+      ".ytp-ad-message-container",
+      ".ytp-featured-product",
+      "tp-yt-paper-dialog:has(ytd-enforcement-message-view-model)",
+      "yt-playability-error-supported-renderers:has(ytd-enforcement-message-view-model)",
+      "#toast:has(> #text-container > yt-formatted-string#text.yt-notification-action-renderer)",
+      ".ytSnackbarContainerOpened:has(> .snackbarViewModelSwipeable > .snackbarViewModelEngagementBarWrapper .ytAttributedStringWhiteSpacePreWrap[style])"
+    ],
+    "biliPruneKeys": [
+      "data.ads",
+      "data.ad_info",
+      "data.ad",
+      "data.cm",
+      "data.cm_config",
+      "data.cms",
+      "data.elec",
+      "data.garb",
+      "data.live_rcmd",
+      "data.OperationCard",
+      "data.operation_card",
+      "data.player_icon",
+      "data.special_card",
+      "data.commercial",
+      "data.card_ad",
+      "result.ads",
+      "result.cm_info",
+      "data.cm_info.ads"
+    ],
+    "ytPruneKeys": [
+      "adPlacements",
+      "playerAds",
+      "adSlots",
+      "adBreakHeartbeatParams",
+      "mastheadAd",
+      "EnforcementMessageViewModel",
+      "bkaEnforcementMessageViewModel",
+      "auxiliaryUi.messageRenderers.bkaEnforcementMessageViewModel",
+      "auxiliaryUi.messageRenderers.enforcementMessageViewModel",
+      "auxiliaryUi.messageRenderers.upsellDialogRenderer",
+      "playabilityStatus.errorScreen.playerErrorMessageRenderer",
+      "playerConfig.adRequestConfig",
+      "playerResponse.adPlacements",
+      "playerResponse.playerAds",
+      "playerResponse.adSlots",
+      "legacyImportant",
+      "[].playerResponse.adPlacements",
+      "[].playerResponse.adSlots",
+      "entries.[-].command.reelWatchEndpoint.adClientParams.isAd"
+    ],
+    "ytTextReplaces": [
+      {
+        "id": "yt-strip-adplacements",
+        "pattern": "\"adPlacements\"",
+        "replacement": "\"_adPlacements_blocked\"",
+        "target": "/youtubei/v1/player"
+      },
+      {
+        "id": "yt-strip-playerads",
+        "pattern": "\"playerAds\"",
+        "replacement": "\"_playerAds_blocked\"",
+        "target": "/youtubei/v1/player"
+      },
+      {
+        "id": "yt-strip-adslots",
+        "pattern": "\"adSlots\"",
+        "replacement": "\"_adSlots_blocked\"",
+        "target": "/youtubei/v1/"
+      },
+      {
+        "id": "yt-strip-enforcement-vm",
+        "pattern": "\"EnforcementMessageViewModel\"",
+        "replacement": "\"_EnforcementMessageViewModel_blocked\"",
+        "target": "/youtubei/v1/"
+      },
+      {
+        "id": "yt-strip-bka-enforcement",
+        "pattern": "\"bkaEnforcementMessageViewModel\"",
+        "replacement": "\"_bkaEnforcementMessageViewModel_blocked\"",
+        "target": "/youtubei/v1/"
+      }
+    ],
+    "dnrRules": [
+      {
+        "id": 10001,
+        "priority": 2,
+        "action": {
+          "type": "block"
+        },
+        "condition": {
+          "urlFilter": "||cm.bilibili.com^",
+          "initiatorDomains": [
+            "bilibili.com"
+          ],
+          "resourceTypes": [
+            "xmlhttprequest",
+            "script",
+            "image",
+            "sub_frame",
+            "ping"
+          ]
+        }
+      },
+      {
+        "id": 10002,
+        "priority": 2,
+        "action": {
+          "type": "block"
+        },
+        "condition": {
+          "urlFilter": "||data.bilibili.com/log/web",
+          "initiatorDomains": [
+            "bilibili.com"
+          ],
+          "resourceTypes": [
+            "xmlhttprequest",
+            "ping",
+            "other"
+          ]
+        }
+      },
+      {
+        "id": 10003,
+        "priority": 2,
+        "action": {
+          "type": "block"
+        },
+        "condition": {
+          "urlFilter": "||youtube.com/api/stats/ads",
+          "initiatorDomains": [
+            "youtube.com"
+          ],
+          "resourceTypes": [
+            "xmlhttprequest",
+            "ping",
+            "image"
+          ]
+        }
+      },
+      {
+        "id": 10004,
+        "priority": 2,
+        "action": {
+          "type": "block"
+        },
+        "condition": {
+          "urlFilter": "||youtube.com/pagead/",
+          "initiatorDomains": [
+            "youtube.com"
+          ],
+          "resourceTypes": [
+            "xmlhttprequest",
+            "script",
+            "image",
+            "sub_frame",
+            "ping"
+          ]
+        }
+      },
+      {
+        "id": 10005,
+        "priority": 2,
+        "action": {
+          "type": "block"
+        },
+        "condition": {
+          "urlFilter": "||youtube.com/ptracking",
+          "initiatorDomains": [
+            "youtube.com"
+          ],
+          "resourceTypes": [
+            "xmlhttprequest",
+            "ping",
+            "image"
+          ]
+        }
+      },
+      {
+        "id": 10006,
+        "priority": 2,
+        "action": {
+          "type": "block"
+        },
+        "condition": {
+          "urlFilter": "||youtube.com/youtubei/v1/player/ad_break",
+          "initiatorDomains": [
+            "youtube.com"
+          ],
+          "resourceTypes": [
+            "xmlhttprequest",
+            "ping"
+          ]
+        }
+      },
+      {
+        "id": 10007,
+        "priority": 2,
+        "action": {
+          "type": "block"
+        },
+        "condition": {
+          "urlFilter": "||doubleclick.net/pagead/",
+          "initiatorDomains": [
+            "youtube.com"
+          ],
+          "resourceTypes": [
+            "xmlhttprequest",
+            "script",
+            "image",
+            "sub_frame"
+          ]
+        }
+      },
+      {
+        "id": 10008,
+        "priority": 2,
+        "action": {
+          "type": "block"
+        },
+        "condition": {
+          "urlFilter": "||googleads.g.doubleclick.net^",
+          "initiatorDomains": [
+            "youtube.com"
+          ],
+          "resourceTypes": [
+            "xmlhttprequest",
+            "script",
+            "image",
+            "sub_frame"
+          ]
+        }
+      },
+      {
+        "id": 10009,
+        "priority": 2,
+        "action": {
+          "type": "block"
+        },
+        "condition": {
+          "urlFilter": "||googlesyndication.com/pagead/",
+          "initiatorDomains": [
+            "youtube.com"
+          ],
+          "resourceTypes": [
+            "xmlhttprequest",
+            "script",
+            "image",
+            "sub_frame"
+          ]
+        }
+      },
+      {
+        "id": 10010,
+        "priority": 2,
+        "action": {
+          "type": "block"
+        },
+        "condition": {
+          "urlFilter": "||adservice.google.com^",
+          "initiatorDomains": [
+            "youtube.com"
+          ],
+          "resourceTypes": [
+            "xmlhttprequest",
+            "script",
+            "image",
+            "sub_frame"
+          ]
+        }
+      },
+      {
+        "id": 10011,
+        "priority": 2,
+        "action": {
+          "type": "block"
+        },
+        "condition": {
+          "urlFilter": "||api.live.bilibili.com/*/Banner",
+          "initiatorDomains": [
+            "bilibili.com"
+          ],
+          "resourceTypes": [
+            "xmlhttprequest",
+            "script",
+            "image",
+            "sub_frame",
+            "ping"
+          ]
+        }
+      },
+      {
+        "id": 10012,
+        "priority": 2,
+        "action": {
+          "type": "block"
+        },
+        "condition": {
+          "urlFilter": "||api.bilibili.com/x/ad/",
+          "initiatorDomains": [
+            "bilibili.com"
+          ],
+          "resourceTypes": [
+            "xmlhttprequest",
+            "script",
+            "image",
+            "sub_frame",
+            "ping"
+          ]
+        }
+      },
+      {
+        "id": 10013,
+        "priority": 2,
+        "action": {
+          "type": "block"
+        },
+        "condition": {
+          "urlFilter": "||hdslb.com/bfs/ad/",
+          "initiatorDomains": [
+            "bilibili.com"
+          ],
+          "resourceTypes": [
+            "xmlhttprequest",
+            "script",
+            "image",
+            "sub_frame",
+            "ping"
+          ]
+        }
+      },
+      {
+        "id": 10014,
+        "priority": 2,
+        "action": {
+          "type": "block"
+        },
+        "condition": {
+          "urlFilter": "||hdslb.com/js/core-v5/picment.",
+          "initiatorDomains": [
+            "bilibili.com"
+          ],
+          "resourceTypes": [
+            "xmlhttprequest",
+            "script",
+            "image",
+            "sub_frame",
+            "ping"
+          ]
+        }
+      },
+      {
+        "id": 10015,
+        "priority": 2,
+        "action": {
+          "type": "block"
+        },
+        "condition": {
+          "urlFilter": "||hdslb.com/bfs/cm/cm-sdk/static/js/pc.js^",
+          "initiatorDomains": [
+            "bilibili.com"
+          ],
+          "resourceTypes": [
+            "script"
+          ]
+        }
+      },
+      {
+        "id": 10016,
+        "priority": 2,
+        "action": {
+          "type": "block"
+        },
+        "condition": {
+          "urlFilter": "||hdslb.com/bfs/seed/jinkela/short/user-fingerprint/",
+          "initiatorDomains": [
+            "bilibili.com"
+          ],
+          "resourceTypes": [
+            "script"
+          ]
+        }
+      },
+      {
+        "id": 10017,
+        "priority": 2,
+        "action": {
+          "type": "block"
+        },
+        "condition": {
+          "urlFilter": "||bilibili.com/html/ads-index.js",
+          "initiatorDomains": [
+            "bilibili.com"
+          ],
+          "resourceTypes": [
+            "xmlhttprequest",
+            "script",
+            "image",
+            "sub_frame",
+            "ping"
+          ]
+        }
+      },
+      {
+        "id": 10018,
+        "priority": 2,
+        "action": {
+          "type": "block"
+        },
+        "condition": {
+          "urlFilter": "||hdslb.com/js/bfd.js",
+          "initiatorDomains": [
+            "bilibili.com"
+          ],
+          "resourceTypes": [
+            "xmlhttprequest",
+            "script",
+            "image",
+            "sub_frame",
+            "ping"
+          ]
+        }
+      }
+    ],
+    "totalSignatures": 152
+  }
+}

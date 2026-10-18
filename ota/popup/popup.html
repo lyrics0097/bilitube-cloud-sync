@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BiliTube AdShield Pro</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="app-container" id="app-root">
+    <!-- Top Header -->
+    <header class="header">
+      <div class="brand">
+        <div class="shield-badge" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            <path d="m9 12 2 2 4-4"></path>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <div class="brand-title-row">
+            <h1 class="brand-title">BiliTube AdShield Pro</h1>
+            <span class="version-badge">v2.0.0</span>
+          </div>
+          <p class="brand-subtitle">哔哩哔哩 &amp; YouTube 专属去广告引擎</p>
+        </div>
+      </div>
+
+      <label class="switch master-switch" title="启用/暂停全局广告拦截">
+        <input type="checkbox" id="toggle-enabled" checked>
+        <span class="slider"></span>
+      </label>
+    </header>
+
+    <!-- Active Tab Status Banner -->
+    <section class="status-banner" id="site-status-card" data-site="general">
+      <div class="status-left">
+        <span class="status-dot" id="status-dot"></span>
+        <div class="status-info">
+          <span class="status-label" id="site-status">全天候待命保护中</span>
+          <span class="status-domain" id="site-domain">DNR 引擎 + 深度 DOM 净化就绪</span>
+        </div>
+      </div>
+      <div class="status-right">
+        <span class="tab-counter-label">当前页拦截</span>
+        <span class="tab-counter-value" id="tab-blocked-count">0</span>
+      </div>
+    </section>
+
+    <!-- 3-Card Statistics Grid -->
+    <section class="stats-grid" aria-label="拦截统计数据">
+      <div class="stat-card stat-card-bilibili">
+        <div class="stat-header">
+          <span class="stat-tag bili-tag">Bilibili</span>
+        </div>
+        <div class="stat-value" id="stat-bilibili">0</div>
+        <div class="stat-label">B站累计拦截</div>
+      </div>
+
+      <div class="stat-card stat-card-youtube">
+        <div class="stat-header">
+          <span class="stat-tag yt-tag">YouTube</span>
+        </div>
+        <div class="stat-value" id="stat-youtube">0</div>
+        <div class="stat-label">YouTube 累计拦截</div>
+      </div>
+
+      <div class="stat-card stat-card-time">
+        <div class="stat-header">
+          <span class="stat-tag time-tag">Efficiency</span>
+        </div>
+        <div class="stat-value stat-value-time" id="stat-saved-time">0 秒</div>
+        <div class="stat-label">已节省时间</div>
+      </div>
+    </section>
+
+    <!-- Self-Evolution Center -->
+    <section class="evolution-card" id="evolution-card">
+      <div class="evo-header">
+        <div class="evo-title-group">
+          <span class="evo-pulse-dot" id="evo-dot"></span>
+          <span class="evo-title">自进化免疫系统</span>
+          <span class="evo-badge" id="evo-version-badge">云端+启发式双擎</span>
+        </div>
+        <button type="button" class="btn-evo-sync" id="btn-evolve-now" title="立即从上游云端同步最新防屏蔽规则">
+          <svg class="evo-sync-icon" id="evo-sync-icon" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+            <path d="M3 3v5h5"></path>
+            <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path>
+            <path d="M16 16h5v5"></path>
+          </svg>
+          <span id="btn-evolve-text">立即进化</span>
+        </button>
+      </div>
+      <div class="evo-metrics">
+        <div class="evo-metric-item">
+          <span class="evo-metric-label">动态免疫特征</span>
+          <span class="evo-metric-value" id="evo-signature-count">0 条</span>
+        </div>
+        <div class="evo-metric-divider"></div>
+        <div class="evo-metric-item">
+          <span class="evo-metric-label">启发式自愈捕获</span>
+          <span class="evo-metric-value" id="evo-learned-count">0 项</span>
+        </div>
+        <div class="evo-metric-divider"></div>
+        <div class="evo-metric-item">
+          <span class="evo-metric-label">最近同步</span>
+          <span class="evo-metric-value" id="evo-last-sync">刚刚</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Feature Toggle List -->
+    <section class="features-section">
+      <div class="section-header">
+        <h2 class="section-title">核心净化策略配置</h2>
+        <span class="section-hint">实时热更新</span>
+      </div>
+
+      <div class="feature-list" id="feature-list">
+        <!-- 1. Bilibili Deep Adblock -->
+        <div class="feature-item" data-platform="bilibili">
+          <div class="feature-meta">
+            <div class="feature-title-row">
+              <span class="platform-dot dot-bilibili"></span>
+              <span class="feature-name">哔哩哔哩深度去广告</span>
+            </div>
+            <p class="feature-desc">首页无坑过滤 / 播放页 / 弹幕挂件</p>
+          </div>
+          <label class="switch switch-bilibili">
+            <input type="checkbox" id="toggle-bilibiliEnabled" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <!-- 2. Bilibili Live Filter -->
+        <div class="feature-item" data-platform="bilibili">
+          <div class="feature-meta">
+            <div class="feature-title-row">
+              <span class="platform-dot dot-bilibili"></span>
+              <span class="feature-name">屏蔽B站直播推广卡片</span>
+            </div>
+            <p class="feature-desc">首页推荐流直播间与带货弹窗</p>
+          </div>
+          <label class="switch switch-bilibili">
+            <input type="checkbox" id="toggle-bilibiliLiveFilter" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <!-- 3. Bilibili Clean URL -->
+        <div class="feature-item" data-platform="bilibili">
+          <div class="feature-meta">
+            <div class="feature-title-row">
+              <span class="platform-dot dot-bilibili"></span>
+              <span class="feature-name">自动净化B站追踪参数</span>
+            </div>
+            <p class="feature-desc">剥离 <code>spm_id_from</code> / <code>vd_source</code></p>
+          </div>
+          <label class="switch switch-bilibili">
+            <input type="checkbox" id="toggle-bilibiliCleanUrl" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <!-- 4. YouTube Adblock -->
+        <div class="feature-item" data-platform="youtube">
+          <div class="feature-meta">
+            <div class="feature-title-row">
+              <span class="platform-dot dot-youtube"></span>
+              <span class="feature-name">YouTube 全站去广告</span>
+            </div>
+            <p class="feature-desc">贴片16倍速秒跳 / 信息流 / Shorts</p>
+          </div>
+          <label class="switch switch-youtube">
+            <input type="checkbox" id="toggle-youtubeEnabled" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <!-- 5. YouTube Anti-Detect -->
+        <div class="feature-item" data-platform="youtube">
+          <div class="feature-meta">
+            <div class="feature-title-row">
+              <span class="platform-dot dot-youtube"></span>
+              <span class="feature-name">YouTube 反拦截弹窗穿透</span>
+            </div>
+            <p class="feature-desc">自动移除警告弹窗并恢复播放</p>
+          </div>
+          <label class="switch switch-youtube">
+            <input type="checkbox" id="toggle-youtubeAntiDetect" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <!-- 6. Self-Evolution & Heuristic Self-Healing -->
+        <div class="feature-item" data-platform="evolution">
+          <div class="feature-meta">
+            <div class="feature-title-row">
+              <span class="platform-dot dot-evolution"></span>
+              <span class="feature-name">自进化免疫与启发式自愈</span>
+            </div>
+            <p class="feature-desc">自动同步云端防屏蔽规则 + 变异DOM/API自学习</p>
+          </div>
+          <label class="switch switch-evolution">
+            <input type="checkbox" id="toggle-selfEvolution" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer Actions -->
+    <footer class="footer-actions">
+      <button type="button" class="btn btn-primary" id="btn-reload-tab">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+          <path d="M3 3v5h5"></path>
+          <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path>
+          <path d="M16 16h5v5"></path>
+        </svg>
+        <span>刷新当前页面生效</span>
+      </button>
+      <button type="button" class="btn btn-secondary" id="btn-reset-stats">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 6h18"></path>
+          <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+          <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+        </svg>
+        <span>重置统计</span>
+      </button>
+    </footer>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="toast" role="status" aria-live="polite">设置已保存并实时生效</div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

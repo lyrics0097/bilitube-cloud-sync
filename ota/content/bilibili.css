@@ -1,0 +1,80 @@
+/**
+ * BiliTube AdShield Pro — Bilibili Cosmetic Filter Stylesheet
+ * Uses modern :has() selectors to collapse entire grid cards containing ads
+ * without leaving empty whitespace shells in the Bilibili feed layout.
+ */
+
+/* Core Bilibili Ad & Commercial Promo Rules */
+html:not([data-bilitube-enabled="false"]) :is(
+  .feed-card:has(.bili-video-card__info--ad),
+  .bili-feed-card:has(.bili-video-card__info--ad),
+  .feed-card:has(.bili-video-card__info--creative-ad),
+  .bili-feed-card:has(.bili-video-card__info--creative-ad),
+  .feed-card:has(.bili-video-card__info--synergy),
+  .bili-feed-card:has(.bili-video-card__info--synergy),
+  .feed-card:has(a[href*="cm.bilibili.com"]),
+  .bili-feed-card:has(a[href*="cm.bilibili.com"]),
+  .feed-card:not(:has(.bili-video-card__wrap)),
+  .bili-feed-card:not(:has(.bili-video-card__wrap)),
+  .container > .bili-video-card:not(:has(.bili-video-card__wrap)),
+  .floor-single-card,
+  .ad-report,
+  .ad-floor-exp,
+  .eva-banner,
+  .slide-ad,
+  #right-bottom-banner,
+  .slide-arp,
+  .video-page-special-card,
+  .video-page-special-card-small,
+  .video-page-game-card-small,
+  #activity_vote,
+  .bpx-player-cmd-dm-wrap,
+  .bpx-player-link-box,
+  .bpx-player-popup-banner,
+  .bilibili-player-video-popup,
+  .login-tip,
+  .vip-login-tip,
+  .palette-button-wrap:has(a[href*="game.bilibili.com"])
+) {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+}
+
+/* Collapse .load-more-anchor into an invisible 1px full-row sentinel so it never creates a 243x228 blank white gap in the grid while remaining observable by IntersectionObserver */
+html:not([data-bilitube-enabled="false"]) .load-more-anchor {
+  grid-column: 1 / -1 !important;
+  width: 100% !important;
+  height: 1px !important;
+  min-height: 1px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Live Stream Promotion & Shopping Cart Rules (Controlled by bilibiliLiveFilter) */
+html:not([data-bilitube-enabled="false"]):not([data-bilitube-live="false"]) :is(
+  .feed-card:has(.bili-live-card),
+  .bili-feed-card:has(.bili-live-card),
+  .feed-card:has(.bili-video-card__stats--live),
+  .bili-feed-card:has(.bili-video-card__stats--live),
+  .bili-video-card:has(.bili-video-card__stats--live),
+  .live-sidebar-shopping-cart,
+  .shopping-cart-module,
+  .shop-popover
+) {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+}
