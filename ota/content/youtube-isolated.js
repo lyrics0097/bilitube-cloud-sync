@@ -66,12 +66,9 @@
       targetParent.appendChild(styleEl);
     }
 
-    const combined = [
-      ...(Array.isArray(evolutionState.ytCosmetics) ? evolutionState.ytCosmetics : []),
-      ...(Array.isArray(evolutionState.learnedYtSelectors)
-        ? evolutionState.learnedYtSelectors
-        : [])
-    ];
+    const combined = Array.isArray(evolutionState.ytCosmetics)
+      ? evolutionState.ytCosmetics
+      : [];
 
     const frag = document.createDocumentFragment();
     const validSelectors = [];
@@ -81,6 +78,19 @@
       if (typeof rawSel !== 'string') continue;
       const sel = rawSel.trim();
       if (!sel || seen.has(sel)) continue;
+      // Never hide interactive dialogs, toasts, player controls, or watch-page containers via evolved CSS
+      if (
+        sel.includes('tp-yt-paper-dialog') ||
+        sel.includes('#toast') ||
+        sel.includes('Snackbar') ||
+        sel.includes('movie_player') ||
+        sel.includes('ytd-watch-flexy') ||
+        sel.includes('ytd-player') ||
+        sel.includes('.ytp-button') ||
+        sel.includes('.ytp-cued')
+      ) {
+        continue;
+      }
       try {
         frag.querySelector(sel);
         seen.add(sel);

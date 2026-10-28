@@ -2,9 +2,9 @@
  * BiliTube AdShield Pro v2.0.0 — YouTube Main World Engine (Self-Evolving Heuristic Edition)
  * Runs at document_start in MAIN world to:
  * 1. Guard HTMLMediaElement.prototype.pause against anti-adblock abnormality/enforcement pauses
- * 2. Perform response text stream replacements (ytTextReplaces) & dynamic key pruning (ytPruneKeys)
- * 3. Detect & instant-skip video ads via both known selectors and Zero-Day Heuristics
- * 4. Defuse anti-adblock enforcement dialogs (including heuristic text inspection) and resume playback
+ * 2. Prune top-level ad slots from ytInitialPlayerResponse / ytInitialData without breaking SPA fetch/XHR navigation
+ * 3. Detect & instant-skip video ads strictly when #movie_player is in .ad-showing / .ad-interrupting state
+ * 4. Defuse anti-adblock enforcement dialogs AND remove orphaned <tp-yt-iron-overlay-backdrop> so clicks are never blocked
  */
 (() => {
   'use strict';
@@ -21,31 +21,11 @@
     ytTextReplaces: []
   };
 
-  const YT_API_PATTERNS = [
-    '/youtubei/v1/player',
-    '/youtubei/v1/next',
-    '/youtubei/v1/browse',
-    '/youtubei/v1/search'
-  ];
-
   const TOP_LEVEL_AD_KEYS = [
     'adPlacements',
     'adSlots',
     'playerAds',
     'adBreakHeartbeatParams'
-  ];
-
-  const RENDERER_AD_KEYS = [
-    'adSlotRenderer',
-    'promotedSparklesWebRenderer',
-    'inFeedAdLayoutRenderer',
-    'mastheadAdRenderer',
-    'statementBannerRenderer',
-    'brandVideoShelfRenderer',
-    'bannerPromoRenderer',
-    'actionCompanionAdRenderer',
-    'promotedVideoRenderer',
-    'compactPromotedVideoRenderer'
   ];
 
   const SKIP_BUTTON_SELECTORS = [
@@ -58,26 +38,12 @@
 
   const HEURISTIC_SKIP_TEXT_REGEX = /^(跳过广告|Skip\s*Ads?)$/i;
   const HEURISTIC_SKIP_CLASS_REGEX = /skip.*ad|ad.*skip/i;
-  const HEURISTIC_AD_BADGE_TEXTS = ['赞助商广告', 'Sponsored', 'Ad ·'];
   const ENFORCEMENT_DIALOG_KEYWORDS = [
     '广告拦截器',
     'Ad blockers are not allowed',
     '允许 YouTube Ads',
     '视频播放器将被屏蔽'
   ];
-
-  // Media stream & timing keys that must NEVER be recursively traversed or mutated
-  const SAFE_MEDIA_KEYS_SKIP = new Set([
-    'streamingData',
-    'storyboards',
-    'captions',
-    'microformat',
-    'playbackTracking',
-    'attestation',
-    'videoDetails',
-    'annotations',
-    'endscreen'
-  ]);
 
   let wasInAdState = false;
   let savedMuted = false;
@@ -114,29 +80,6 @@
     }
   }
 
-  function notifyHeuristicLearned(selector, reason = 'YouTube新型跳过按钮特征') {
-    if (!selector || typeof selector !== 'string') return;
-    const trimmed = selector.trim();
-    if (!trimmed || learnedSkipSelectors.has(trimmed) || SKIP_BUTTON_SELECTORS.includes(trimmed)) {
-      return;
-    }
-    learnedSkipSelectors.add(trimmed);
-    try {
-      window.postMessage(
-        {
-          source: 'bilitube-main',
-          type: 'HEURISTIC_LEARNED',
-          site: 'youtube',
-          selector: trimmed,
-          reason
-        },
-        '*'
-      );
-    } catch {
-      // Ignore cross-window messaging errors
-    }
-  }
-
   function updateExpectedMainDuration(payload) {
     if (!payload || typeof payload !== 'object') return;
     const rawLen =
@@ -161,8 +104,7 @@
         const stack = String(new Error().stack || '');
         const isEnforcementPause =
           hasEnforcementModal ||
-          stack.includes('onAbnormalityDetected') ||
-          stack.includes('enforcement');
+          stack.includes('onAbnormalityDetected');
 
         if (isEnforcementPause) {
           scheduleChecks();
@@ -176,183 +118,37 @@
   };
 
   // =========================================================================
-  // 2. JSON Pruning Engine, Text Stream Replacement & JSON.stringify Hook
+  // 2. Lightweight Top-Level Pruning for `ytInitialPlayerResponse` & `ytInitialData`
+  //    (Never wraps window.fetch or XMLHttpRequest to preserve 100% native SPA navigation & response.url)
   // =========================================================================
-  const originalJsonStringify = JSON.stringify;
-  JSON.stringify = function (value, replacer, space) {
-    if (
-      isActive() &&
-      config.youtubeAntiDetect &&
-      value &&
-      typeof value === 'object' &&
-      'attestationRequest' in value &&
-      value.context &&
-      typeof value.context === 'object'
-    ) {
-      try {
-        if (value.playbackContext?.contentPlaybackContext) {
-          value.playbackContext.contentPlaybackContext.vis = 0;
-        }
-      } catch {
-        // Ignore read-only request fields
-      }
-    }
-    return originalJsonStringify.call(this, value, replacer, space);
-  };
-
-  function isAdItemObject(item) {
-    if (!item || typeof item !== 'object') return false;
-    for (const key of RENDERER_AD_KEYS) {
-      if (key in item) return true;
-    }
-    if (Array.isArray(config.ytPruneKeys)) {
-      for (const dynKey of config.ytPruneKeys) {
-        if (typeof dynKey === 'string' && !dynKey.includes('.') && dynKey in item) return true;
-      }
-    }
-    if (item.richItemRenderer?.content) {
-      for (const key of RENDERER_AD_KEYS) {
-        if (key in item.richItemRenderer.content) return true;
-      }
-      if (Array.isArray(config.ytPruneKeys)) {
-        for (const dynKey of config.ytPruneKeys) {
-          if (
-            typeof dynKey === 'string' &&
-            !dynKey.includes('.') &&
-            dynKey in item.richItemRenderer.content
-          ) {
-            return true;
-          }
-        }
-      }
-    }
-    return false;
-  }
-
-  function pruneByDotPath(obj, dotPath) {
-    if (!obj || typeof obj !== 'object' || typeof dotPath !== 'string' || !dotPath.includes('.')) {
-      return 0;
-    }
-    if (dotPath.includes('ssapConfig') || dotPath.includes('streamingData')) {
-      return 0;
-    }
-    const parts = dotPath
-      .split('.')
-      .map((s) => s.trim())
-      .filter(Boolean);
-    if (parts.length < 2) return 0;
-
-    let current = obj;
-    for (let i = 0; i < parts.length - 1; i += 1) {
-      if (!current || typeof current !== 'object') return 0;
-      current = current[parts[i]];
-    }
-    const last = parts[parts.length - 1];
-    if (current && typeof current === 'object' && last in current && current[last] !== undefined) {
-      const val = current[last];
-      delete current[last];
-      return Array.isArray(val) ? Math.max(1, val.length) : 1;
-    }
-    return 0;
-  }
-
-  function pruneYouTubePayload(obj, seen = new WeakSet(), isRoot = true) {
+  function pruneTopLevelYouTubeObject(obj) {
     if (!isActive() || !obj || typeof obj !== 'object') return 0;
-    if (seen.has(obj)) return 0;
-    seen.add(obj);
-
-    if (isRoot) {
-      updateExpectedMainDuration(obj);
-    }
+    updateExpectedMainDuration(obj);
 
     let prunedCount = 0;
-
-    const activeTopKeys = [...TOP_LEVEL_AD_KEYS];
-    if (Array.isArray(config.ytPruneKeys)) {
-      for (const customKey of config.ytPruneKeys) {
-        if (typeof customKey !== 'string' || !customKey.trim()) continue;
-        if (customKey.includes('ssapConfig') || customKey.includes('streamingData')) continue;
-        if (customKey.includes('.')) {
-          if (isRoot) {
-            prunedCount += pruneByDotPath(obj, customKey);
-          }
-        } else if (!activeTopKeys.includes(customKey)) {
-          activeTopKeys.push(customKey);
-        }
-      }
-    }
-
-    for (const adKey of activeTopKeys) {
+    for (const adKey of TOP_LEVEL_AD_KEYS) {
       if (adKey in obj && obj[adKey] !== undefined) {
-        const val = obj[adKey];
-        prunedCount += Array.isArray(val) ? Math.max(1, val.length) : 1;
         delete obj[adKey];
+        prunedCount += 1;
       }
     }
-
     if (obj.playerResponse && typeof obj.playerResponse === 'object') {
-      prunedCount += pruneYouTubePayload(obj.playerResponse, seen, true);
-    }
-
-    for (const key of Object.keys(obj)) {
-      if (SAFE_MEDIA_KEYS_SKIP.has(key) || key === 'playerResponse') continue;
-      const val = obj[key];
-      if (!val || typeof val !== 'object') continue;
-
-      if (Array.isArray(val)) {
-        const before = val.length;
-        const filtered = val.filter((entry) => !isAdItemObject(entry));
-        if (filtered.length !== before) {
-          prunedCount += before - filtered.length;
-          obj[key] = filtered;
+      updateExpectedMainDuration(obj.playerResponse);
+      for (const adKey of TOP_LEVEL_AD_KEYS) {
+        if (adKey in obj.playerResponse && obj.playerResponse[adKey] !== undefined) {
+          delete obj.playerResponse[adKey];
+          prunedCount += 1;
         }
-        for (const item of obj[key]) {
-          if (item && typeof item === 'object') {
-            prunedCount += pruneYouTubePayload(item, seen, false);
-          }
-        }
-      } else {
-        prunedCount += pruneYouTubePayload(val, seen, false);
       }
     }
-
     return prunedCount;
-  }
-
-  /**
-   * Applies ytTextReplaces rules on raw JSON text for /youtubei/v1/player and /youtubei/v1/next
-   */
-  function applyResponseTextReplaces(urlStr, rawText) {
-    if (
-      !rawText ||
-      typeof rawText !== 'string' ||
-      (!urlStr.includes('/youtubei/v1/player') && !urlStr.includes('/youtubei/v1/next'))
-    ) {
-      return { text: rawText, replacedCount: 0 };
-    }
-
-    let text = rawText;
-    let replacedCount = 0;
-
-    const rules = Array.isArray(config.ytTextReplaces) ? config.ytTextReplaces : [];
-    for (const rule of rules) {
-      if (!rule || typeof rule !== 'object') continue;
-      const findStr = rule.find ?? rule.pattern ?? rule.from;
-      const replaceStr = rule.replace ?? rule.replacement ?? rule.to ?? '';
-      if (typeof findStr === 'string' && findStr.length > 0 && text.includes(findStr)) {
-        text = text.split(findStr).join(String(replaceStr));
-        replacedCount += 1;
-      }
-    }
-
-    return { text, replacedCount };
   }
 
   function hookGlobalProperty(propName) {
     try {
       let currentValue = window[propName];
       if (currentValue && typeof currentValue === 'object') {
-        const count = pruneYouTubePayload(currentValue);
+        const count = pruneTopLevelYouTubeObject(currentValue);
         if (count > 0) notifyBlocked(count, count * 15, `YouTube ${propName} 净化`);
       }
 
@@ -364,7 +160,7 @@
         },
         set(newVal) {
           if (isActive() && newVal && typeof newVal === 'object') {
-            const count = pruneYouTubePayload(newVal);
+            const count = pruneTopLevelYouTubeObject(newVal);
             if (count > 0) notifyBlocked(count, count * 15, `YouTube ${propName} 净化`);
           }
           currentValue = newVal;
@@ -378,184 +174,32 @@
   hookGlobalProperty('ytInitialPlayerResponse');
   hookGlobalProperty('ytInitialData');
 
-  function matchesYouTubeApi(urlStr) {
-    if (typeof urlStr !== 'string') return false;
-    return YT_API_PATTERNS.some((pattern) => urlStr.includes(pattern));
-  }
-
-  const originalFetch = window.fetch;
-  window.fetch = async function (...args) {
-    const response = await originalFetch.apply(this, args);
-    if (!isActive()) return response;
-
-    try {
-      const requestInfo = args[0];
-      const urlStr =
-        typeof requestInfo === 'string'
-          ? requestInfo
-          : requestInfo?.url || response?.url || '';
-
-      if (!matchesYouTubeApi(urlStr)) return response;
-
-      const cloned = response.clone();
-      const rawText = await cloned.text();
-      if (!rawText) return response;
-
-      const { text: replacedText, replacedCount } = applyResponseTextReplaces(urlStr, rawText);
-      const data = JSON.parse(replacedText);
-      const prunedCount = pruneYouTubePayload(data);
-      const totalCount = prunedCount + replacedCount;
-
-      if (!totalCount) return response;
-
-      notifyBlocked(totalCount, totalCount * 15, 'YouTube API 载荷净化');
-
-      const cleanHeaders = new Headers(response.headers);
-      cleanHeaders.delete('content-length');
-      cleanHeaders.delete('content-encoding');
-
-      return new Response(originalJsonStringify(data), {
-        status: response.status,
-        statusText: response.statusText,
-        headers: cleanHeaders
-      });
-    } catch {
-      return response;
-    }
-  };
-
-  const originalXhrOpen = XMLHttpRequest.prototype.open;
-  const originalXhrSend = XMLHttpRequest.prototype.send;
-
-  function attachYtXhrInterceptor(xhr) {
-    if (xhr.__bilitubeYtXhrHooked) return;
-    xhr.__bilitubeYtXhrHooked = true;
-    xhr.addEventListener('readystatechange', function () {
-      if (this.readyState !== 4 || !isActive() || !matchesYouTubeApi(this.__bilitubeYtUrl)) return;
-      try {
-        const rType = this.responseType;
-        if (rType === '' || rType === 'text') {
-          const rawText = this.responseText;
-          if (!rawText) return;
-          const { text: replacedText, replacedCount } = applyResponseTextReplaces(
-            this.__bilitubeYtUrl,
-            rawText
-          );
-          const parsed = JSON.parse(replacedText);
-          const prunedCount = pruneYouTubePayload(parsed);
-          const totalCount = prunedCount + replacedCount;
-          if (!totalCount) return;
-          notifyBlocked(totalCount, totalCount * 15, 'YouTube XHR 载荷净化');
-          const serialized = originalJsonStringify(parsed);
-          Object.defineProperty(this, 'responseText', {
-            configurable: true,
-            get: () => serialized
-          });
-          Object.defineProperty(this, 'response', {
-            configurable: true,
-            get: () => serialized
-          });
-        } else if (rType === 'json' && this.response && typeof this.response === 'object') {
-          const count = pruneYouTubePayload(this.response);
-          if (count > 0) {
-            notifyBlocked(count, count * 15, 'YouTube XHR 载荷净化');
-          }
-        }
-      } catch {
-        // Ignore non-JSON XHR responses
-      }
-    });
-  }
-
-  XMLHttpRequest.prototype.open = function (method, url, ...rest) {
-    try {
-      this.__bilitubeYtUrl = typeof url === 'string' ? url : String(url || '');
-      if (matchesYouTubeApi(this.__bilitubeYtUrl)) {
-        attachYtXhrInterceptor(this);
-      }
-    } catch {
-      this.__bilitubeYtUrl = '';
-    }
-    return originalXhrOpen.call(this, method, url, ...rest);
-  };
-
-  XMLHttpRequest.prototype.send = function (...args) {
-    if (isActive() && matchesYouTubeApi(this.__bilitubeYtUrl)) {
-      attachYtXhrInterceptor(this);
-    }
-    return originalXhrSend.apply(this, args);
-  };
-
   // =========================================================================
-  // 3. Zero-Day Heuristic Video Ad & Skip Button Detector (`handleYouTubeVideoAd`)
+  // 3. Video Ad Detector & Instant Skipper (`handleYouTubeVideoAd`)
   // =========================================================================
   function isElementVisible(el) {
     if (!el || !(el instanceof HTMLElement)) return false;
     return el.offsetParent !== null;
   }
 
-  function detectZeroDayAdAndSkipButtons(player) {
-    if (config.selfEvolution === false) {
-      return { isHeuristicAd: false, heuristicSkipButtons: [] };
-    }
-
-    // Only scan inside .ytp-ad-module or when ad overlay containers exist
-    // so normal video playback (and SponsorBlock skip buttons) are never misidentified as ads
+  function findHeuristicSkipButtons(player) {
+    if (config.selfEvolution === false) return [];
     const adModule = player.querySelector(
       '.ytp-ad-module, .ytp-ad-player-overlay, .ytp-ad-player-overlay-layout'
     );
-    if (!adModule || adModule.children.length === 0) {
-      return { isHeuristicAd: false, heuristicSkipButtons: [] };
-    }
+    if (!adModule) return [];
 
-    let isHeuristicAd = false;
-    const heuristicSkipButtons = [];
-
+    const found = [];
     const buttons = adModule.querySelectorAll('button, [role="button"]');
     for (const btn of buttons) {
       if (!(btn instanceof HTMLElement) || !isElementVisible(btn)) continue;
       const text = (btn.textContent || '').trim();
       const classStr = typeof btn.className === 'string' ? btn.className : '';
-
-      const matchesSkipText = HEURISTIC_SKIP_TEXT_REGEX.test(text);
-      const matchesSkipClass = HEURISTIC_SKIP_CLASS_REGEX.test(classStr);
-
-      if (matchesSkipText || matchesSkipClass) {
-        isHeuristicAd = true;
-        heuristicSkipButtons.push(btn);
-
-        if (btn.classList && btn.classList.length > 0) {
-          for (const cls of Array.from(btn.classList)) {
-            if (!cls || cls.length < 4) continue;
-            const candidateSelector = `.${CSS.escape(cls)}`;
-            if (
-              !SKIP_BUTTON_SELECTORS.includes(candidateSelector) &&
-              (HEURISTIC_SKIP_CLASS_REGEX.test(cls) || matchesSkipText)
-            ) {
-              notifyHeuristicLearned(candidateSelector, 'YouTube新型跳过按钮特征');
-            }
-          }
-        }
+      if (HEURISTIC_SKIP_TEXT_REGEX.test(text) || HEURISTIC_SKIP_CLASS_REGEX.test(classStr)) {
+        found.push(btn);
       }
     }
-
-    if (!isHeuristicAd) {
-      const badges = adModule.querySelectorAll('span, div');
-      for (const badge of badges) {
-        if (!(badge instanceof HTMLElement) || badge.children.length > 0) continue;
-        const text = (badge.textContent || '').trim();
-        if (!text) continue;
-        if (
-          HEURISTIC_AD_BADGE_TEXTS.some((kw) => text === kw || text.startsWith(kw)) &&
-          isElementVisible(badge)
-        ) {
-          isHeuristicAd = true;
-          break;
-        }
-      }
-    }
-
-    return { isHeuristicAd, heuristicSkipButtons };
+    return found;
   }
 
   function handleYouTubeVideoAd() {
@@ -567,13 +211,12 @@
     ensurePlayerClassObserver(player);
 
     const video = player.querySelector('video.html5-main-video') || player.querySelector('video');
-    const isKnownAdShowing =
-      player.classList.contains('ad-showing') ||
-      player.classList.contains('ad-interrupting') ||
-      Boolean(player.querySelector('.ytp-ad-player-overlay, .ytp-ad-player-overlay-layout'));
 
-    const { isHeuristicAd, heuristicSkipButtons } = detectZeroDayAdAndSkipButtons(player);
-    const isAdShowing = isKnownAdShowing || isHeuristicAd;
+    // Strictly require #movie_player to have .ad-showing or .ad-interrupting class
+    // so residual/hidden .ytp-ad-player-overlay nodes NEVER trigger false-positive seeks on the main video
+    const isAdShowing =
+      player.classList.contains('ad-showing') ||
+      player.classList.contains('ad-interrupting');
 
     if (isAdShowing) {
       if (!wasInAdState) {
@@ -585,12 +228,12 @@
         }
       }
 
-      // 1. Click any available known skip or overlay close button first
+      // 1. Click any available known skip or overlay close button
       const allSkipSelectors = [...SKIP_BUTTON_SELECTORS, ...learnedSkipSelectors];
       const skipButtons = player.querySelectorAll(allSkipSelectors.join(', '));
       let clickedSkip = false;
       for (const btn of skipButtons) {
-        if (btn instanceof HTMLElement) {
+        if (btn instanceof HTMLElement && isElementVisible(btn)) {
           try {
             btn.click();
             clickedSkip = true;
@@ -600,7 +243,8 @@
         }
       }
 
-      // 2. Click any zero-day heuristic skip buttons discovered
+      // 2. Click any heuristic skip buttons inside .ytp-ad-module
+      const heuristicSkipButtons = findHeuristicSkipButtons(player);
       for (const btn of heuristicSkipButtons) {
         try {
           btn.click();
@@ -610,34 +254,30 @@
         }
       }
 
-      // 3. Trigger YouTube's internal player API ad-finish hooks if available
-      try {
-        if (typeof player.finishAd === 'function') {
-          player.finishAd();
-          clickedSkip = true;
-        } else if (typeof player.skipAd === 'function') {
-          player.skipAd();
-          clickedSkip = true;
-        }
-      } catch {
-        // Ignore player internal API errors
-      }
-
-      // 4. Gently mute and seek once per ad clip (avoiding 16x rate or repeated seek storms that cause MSE audio-video desync)
+      // 3. Mute ad and safely seek ONLY if the active media element is a short ad clip (<= 120s)
+      //    Never seek long main videos or paused/unloaded streams!
       if (video) {
         video.muted = true;
         const now = Date.now();
+        const dur = video.duration;
+        const isShortAdClip =
+          Number.isFinite(dur) &&
+          dur > 1.0 &&
+          dur <= 120 &&
+          (expectedMainDuration <= 0 || Math.abs(dur - expectedMainDuration) > 5);
+
         if (
           !clickedSkip &&
+          isShortAdClip &&
+          !video.paused &&
           !video.seeking &&
-          Number.isFinite(video.duration) &&
-          video.duration > 0.5 &&
-          video.currentTime < video.duration - 0.3 &&
-          now - lastAdSeekTimestamp > 600
+          video.readyState >= 2 &&
+          video.currentTime < dur - 0.3 &&
+          now - lastAdSeekTimestamp > 800
         ) {
           lastAdSeekTimestamp = now;
           try {
-            video.currentTime = Math.max(0, video.duration - 0.15);
+            video.currentTime = Math.max(0, dur - 0.15);
           } catch {
             // Ignore seek restrictions
           }
@@ -647,11 +287,7 @@
       const now = Date.now();
       if (now - lastAdNotifyTimestamp > 1500) {
         lastAdNotifyTimestamp = now;
-        notifyBlocked(
-          1,
-          15,
-          isHeuristicAd && !isKnownAdShowing ? 'YouTube启发式贴片广告秒跳' : 'YouTube贴片广告秒跳'
-        );
+        notifyBlocked(1, 15, 'YouTube贴片广告秒跳');
       }
     } else if (wasInAdState) {
       wasInAdState = false;
@@ -669,8 +305,19 @@
   }
 
   // =========================================================================
-  // 4. Zero-Day Anti-Adblock Modal Heuristic Defuser (`bypassEnforcementDialog`)
+  // 4. Anti-Adblock Modal & Orphaned Backdrop Defuser (`bypassEnforcementDialog`)
   // =========================================================================
+  function hasVisiblePaperDialog() {
+    const dialogs = document.querySelectorAll('tp-yt-paper-dialog');
+    for (const d of dialogs) {
+      if (!(d instanceof HTMLElement)) continue;
+      if (d.offsetParent !== null && d.style.display !== 'none' && !d.hasAttribute('aria-hidden')) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   function bypassEnforcementDialog() {
     if (!isActive() || !config.youtubeAntiDetect) return;
 
@@ -681,37 +328,55 @@
     );
     if (enforcementEl) {
       const dialog = enforcementEl.closest('tp-yt-paper-dialog') || enforcementEl;
+      try {
+        if (typeof dialog.close === 'function') dialog.close();
+      } catch {
+        // Ignore close error
+      }
       dialog.remove();
       removedAny = true;
     }
 
-    // Zero-Day Heuristic inspection of open tp-yt-paper-dialog elements
     const dialogs = document.querySelectorAll('tp-yt-paper-dialog');
     for (const dialog of dialogs) {
       if (!(dialog instanceof HTMLElement)) continue;
       const text = dialog.textContent || '';
       if (ENFORCEMENT_DIALOG_KEYWORDS.some((kw) => text.includes(kw))) {
+        try {
+          if (typeof dialog.close === 'function') dialog.close();
+        } catch {
+          // Ignore close error
+        }
         dialog.remove();
         removedAny = true;
       }
     }
 
-    if (!removedAny) return;
-
+    // Also clean up any orphaned <tp-yt-iron-overlay-backdrop> that blocks page clicks
+    // when no visible tp-yt-paper-dialog is actually open
     const backdrops = document.querySelectorAll('tp-yt-iron-overlay-backdrop');
-    for (const backdrop of backdrops) {
-      backdrop.remove();
+    if (backdrops.length > 0 && (removedAny || !hasVisiblePaperDialog())) {
+      for (const backdrop of backdrops) {
+        if (removedAny || backdrop.hasAttribute('opened') || backdrop.classList.contains('opened')) {
+          backdrop.remove();
+          removedAny = true;
+        }
+      }
     }
+
+    if (!removedAny) return;
 
     if (document.body) {
       document.body.style.removeProperty('overflow');
+      document.body.style.removeProperty('pointer-events');
     }
     if (document.documentElement) {
       document.documentElement.style.removeProperty('overflow');
+      document.documentElement.style.removeProperty('pointer-events');
     }
 
     const video = document.querySelector('#movie_player video');
-    if (video && video.paused) {
+    if (video && video.paused && video.readyState >= 2) {
       (async () => {
         try {
           await video.play();
@@ -746,7 +411,6 @@
     }, 300);
   }
 
-  // Dedicated lightweight observer only for #movie_player class changes (ad-showing / ad-interrupting)
   const playerClassObserver = new MutationObserver(() => {
     scheduleChecks();
   });
@@ -799,66 +463,46 @@
     );
   }
 
-  // Listen to video loadedmetadata & timeupdate only when an ad is actually showing
-  document.addEventListener(
-    'loadedmetadata',
-    (e) => {
-      if (e.target instanceof HTMLVideoElement) scheduleChecks();
-    },
-    true
-  );
+  window.addEventListener('yt-navigate-finish', () => {
+    expectedMainDuration = 0;
+    wasInAdState = false;
+    scheduleChecks();
+  });
 
-  document.addEventListener(
-    'timeupdate',
-    (e) => {
-      if (e.target instanceof HTMLVideoElement) {
-        const player = document.getElementById('movie_player');
-        if (
-          player &&
-          (player.classList.contains('ad-showing') || player.classList.contains('ad-interrupting'))
-        ) {
-          scheduleChecks();
-        }
-      }
-    },
-    true
-  );
-
-  // =========================================================================
-  // 5. Listen for Configuration & Evolution Sync from Isolated World
-  // =========================================================================
   window.addEventListener('message', (event) => {
     if (event.source !== window) return;
-    const msg = event.data;
-    if (!msg || msg.source !== 'bilitube-isolated' || msg.type !== 'CONFIG_SYNC') return;
+    const data = event.data;
+    if (!data || data.source !== 'bilitube-isolated' || data.type !== 'CONFIG_SYNC') return;
 
-    const settings = msg.settings;
-    if (settings && typeof settings === 'object') {
-      if (typeof settings.enabled === 'boolean') config.enabled = settings.enabled;
-      if (typeof settings.youtubeEnabled === 'boolean') {
-        config.youtubeEnabled = settings.youtubeEnabled;
+    if (data.settings && typeof data.settings === 'object') {
+      if (typeof data.settings.enabled === 'boolean') {
+        config.enabled = data.settings.enabled;
       }
-      if (typeof settings.youtubeAntiDetect === 'boolean') {
-        config.youtubeAntiDetect = settings.youtubeAntiDetect;
+      if (typeof data.settings.youtubeEnabled === 'boolean') {
+        config.youtubeEnabled = data.settings.youtubeEnabled;
       }
-      if (typeof settings.selfEvolution === 'boolean') {
-        config.selfEvolution = settings.selfEvolution;
+      if (typeof data.settings.youtubeAntiDetect === 'boolean') {
+        config.youtubeAntiDetect = data.settings.youtubeAntiDetect;
+      }
+      if (typeof data.settings.selfEvolution === 'boolean') {
+        config.selfEvolution = data.settings.selfEvolution;
       }
     }
 
-    const evolution = msg.evolution;
-    if (evolution && typeof evolution === 'object') {
-      if (Array.isArray(evolution.ytPruneKeys)) {
-        config.ytPruneKeys = evolution.ytPruneKeys;
+    if (data.evolution && typeof data.evolution === 'object') {
+      if (Array.isArray(data.evolution.ytPruneKeys)) {
+        config.ytPruneKeys = data.evolution.ytPruneKeys;
       }
-      if (Array.isArray(evolution.ytTextReplaces)) {
-        config.ytTextReplaces = evolution.ytTextReplaces;
+      if (Array.isArray(data.evolution.ytTextReplaces)) {
+        config.ytTextReplaces = data.evolution.ytTextReplaces;
       }
-      if (typeof evolution.selfEvolution === 'boolean') {
-        config.selfEvolution = evolution.selfEvolution;
+      if (typeof data.evolution.selfEvolution === 'boolean') {
+        config.selfEvolution = data.evolution.selfEvolution;
       }
     }
 
-    scheduleChecks();
+    if (isActive()) {
+      scheduleChecks();
+    }
   });
 })();

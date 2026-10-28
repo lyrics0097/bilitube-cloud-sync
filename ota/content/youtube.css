@@ -22,7 +22,6 @@ html:not([data-bilitube-yt-enabled="false"]) :is(
   .ytp-ad-overlay-container,
   .ytp-ad-message-container,
   .ytp-ad-progress-list,
-  ytd-enforcement-message-view-model,
   #movie_player .ytp-right-controls #startSegmentButton,
   #movie_player .ytp-right-controls #cancelSegmentButton,
   #movie_player .ytp-right-controls #deleteButton,
@@ -35,5 +34,15 @@ html:not([data-bilitube-yt-enabled="false"]) :is(
   margin: 0 !important;
   padding: 0 !important;
   overflow: hidden !important;
+  pointer-events: none !important;
+}
+
+/* Ensure residual ad overlay containers never block clicks on the video player when no ad is playing */
+html:not([data-bilitube-yt-enabled="false"]) #movie_player:not(.ad-showing):not(.ad-interrupting) :is(
+  .ytp-ad-player-overlay,
+  .ytp-ad-player-overlay-layout,
+  .ytp-ad-action-interstitial
+) {
+  display: none !important;
   pointer-events: none !important;
 }

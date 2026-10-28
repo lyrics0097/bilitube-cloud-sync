@@ -202,10 +202,31 @@ function isSafeYtPruneKey(key) {
   if (
     lower.includes('ssapconfig') ||
     lower.includes('streamingdata') ||
+    lower.includes('legacyimportant') ||
+    lower.includes('[]') ||
     lower === 'video_id' ||
     lower.endsWith('.video_id') ||
     lower.includes('playabilitystatus') ||
     lower.includes('videodetails')
+  ) {
+    return false;
+  }
+  return true;
+}
+
+function isSafeYtSelector(sel) {
+  if (typeof sel !== 'string') return false;
+  const trimmed = sel.trim();
+  if (!trimmed) return false;
+  const lower = trimmed.toLowerCase();
+  if (
+    lower.includes('tp-yt-paper-dialog') ||
+    lower.includes('#toast') ||
+    lower.includes('snackbar') ||
+    lower.includes('movie_player') ||
+    lower.includes('ytd-watch-flexy') ||
+    lower.includes('ytd-player') ||
+    lower.includes('.ytp-button')
   ) {
     return false;
   }
@@ -217,7 +238,9 @@ function normalizeEvolution(rawEvo) {
   const biliCosmetics = uniqueStrings(base.biliCosmetics, MAX_COSMETIC_SELECTORS).filter(
     isSafeBiliSelector
   );
-  const ytCosmetics = uniqueStrings(base.ytCosmetics, MAX_COSMETIC_SELECTORS);
+  const ytCosmetics = uniqueStrings(base.ytCosmetics, MAX_COSMETIC_SELECTORS).filter(
+    isSafeYtSelector
+  );
   const biliPruneKeys = uniqueStrings([
     ...DEFAULT_EVOLUTION.biliPruneKeys,
     ...(Array.isArray(base.biliPruneKeys) ? base.biliPruneKeys : [])
@@ -1011,8 +1034,18 @@ function parseFilterText(
   if (!text || typeof text !== 'string') return;
   const lines = text.split(/\r?\n/);
 
+  let ifDepth = 0;
   for (const rawLine of lines) {
     const line = rawLine.trim();
+    if (line.startsWith('!#if')) {
+      ifDepth++;
+      continue;
+    }
+    if (line.startsWith('!#endif')) {
+      if (ifDepth > 0) ifDepth--;
+      continue;
+    }
+    if (ifDepth > 0) continue;
     if (!line || line.startsWith('!') || line.startsWith('[')) continue;
     if (line.startsWith('#') && !line.startsWith('##')) continue;
 
