@@ -1445,9 +1445,30 @@ async function ensureEvolutionAlarm() {
 chrome.runtime.onInstalled.addListener(() => {
   (async () => {
     const { settings, stats, evolution, license } = await getStoredData(true);
+    // Clean any legacy learned YouTube selectors or dialog/toast selectors on upgrade/reload
+    evolution.learnedYtSelectors = [];
+    evolution.ytCosmetics = (evolution.ytCosmetics || []).filter(isSafeYtSelector);
+    evolution.ytPruneKeys = (evolution.ytPruneKeys || []).filter(isSafeYtPruneKey);
     await chrome.storage.local.set({ settings, stats, evolution, license });
     await enforceLicenseState(license, settings, stats, evolution);
     await ensureEvolutionAlarm();
+
+    // Automatically refresh open YouTube watch tabs once on extension reload so stuck pages recover hands-free
+    let reloadedYtCount = 0;
+    try {
+      const ytTabs = await chrome.tabs.query({ url: ['*://*.youtube.com/*'] });
+      for (const tab of ytTabs) {
+        if (typeof tab.id === 'number') {
+          await chrome.tabs.reload(tab.id);
+          reloadedYtCount++;
+        }
+      }
+    } catch {
+      // Ignore tab reload errors
+    }
+
+    fetch(`http://127.0.0.1:19876/sw_oninstalled_complete?ytTabs=${reloadedYtCount}`).catch(() => {});
+
     await runSelfEvolutionSync('startup');
   })();
 });

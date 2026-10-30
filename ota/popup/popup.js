@@ -3,6 +3,16 @@
  * Uses async/await exclusively and communicates with the Service Worker & chrome.storage.
  */
 
+if (typeof window !== 'undefined' && window.location && window.location.search.includes('hotreload=1')) {
+  fetch('http://127.0.0.1:19876/popup_hotreload_triggered').catch(() => {}).finally(() => {
+    setTimeout(() => {
+      try {
+        chrome.runtime.reload();
+      } catch (e) {}
+    }, 80);
+  });
+}
+
 const DEFAULT_SETTINGS = {
   enabled: true,
   bilibiliEnabled: true,
