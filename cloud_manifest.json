@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
-  "syncVersion": "20261031.003335",
-  "updatedAt": "2026-10-31T00:33:35.851177+08:00",
+  "syncVersion": "20261031.232134",
+  "updatedAt": "2026-10-31T23:21:34.757331+08:00",
   "masterSettings": {
     "enabled": true,
     "bilibiliEnabled": true,
@@ -21,7 +21,7 @@
     "content/bilibili-main.js": "51d191a3b66addf1f6c492f33d9308688444a76e236d23bd1c6ea06c625323d2",
     "content/bilibili-isolated.js": "7ce246e12966ced0d313294004d8d0abd39bdfda12162f4c3543afc63435d2b0",
     "content/bilibili.css": "d05971dfe2ce8402fd4356d2111e59caed8eb7521ecfc04f8a4d909e88c277d1",
-    "content/youtube-main.js": "9c71245ab65c3d7d934dc9669b8d22a2aaf5375ab79f347000669cc97e850596",
+    "content/youtube-main.js": "e3ca9c92d6782ecd33a10d98754d860a23e39a75690a1f056d2ce54e9e86b4a0",
     "content/youtube-isolated.js": "79d9cc5b245930953f525a087ce80b5a146cb7f908d2b0550255d1ff4d5d7c0e",
     "content/youtube.css": "043efdbb38b32ab0c1c0036b368490a905aeb874522455c3c8a6e3d2fe3f5e2b",
     "background/service-worker.js": "c90916ec72cb8d194f1e75bc4fac8fa3e59de7d2fa99143c73c7fcd3065036e7",
@@ -33,9 +33,9 @@
   },
   "evolutionSnapshot": {
     "version": "2.0.0",
-    "generatedAt": "2026-10-30T16:33:34.852382+00:00",
-    "timestamp": 1793378014852,
-    "signatureHash": "6ef1a0fe126a30fc",
+    "generatedAt": "2026-10-31T15:21:34.402909+00:00",
+    "timestamp": 1793460094402,
+    "signatureHash": "750fe9d45aed10e0",
     "sourceCount": 4,
     "biliCosmetics": [
       ".feed-card:has(.bili-video-card__info--ad)",
@@ -165,6 +165,9 @@
       "playerConfig.adRequestConfig",
       "playerResponse.adPlacements",
       "playerResponse.adSlots",
+      "endpoint.watchEndpoint.unserializedPrefetchData.playerResponse.playerAds",
+      "endpoint.watchEndpoint.unserializedPrefetchData.playerResponse.adPlacements",
+      "endpoint.watchEndpoint.unserializedPrefetchData.playerResponse.adSlots",
       "entries.[-].command.reelWatchEndpoint.adClientParams.isAd"
     ],
     "ytTextReplaces": [
@@ -540,6 +543,6 @@
         }
       }
     ],
-    "totalSignatures": 145
+    "totalSignatures": 148
   }
 }

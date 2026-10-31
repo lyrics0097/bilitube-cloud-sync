@@ -62,24 +62,17 @@
       const now = Date.now();
       const exp = 2099999999999;
       const qualityPayload = JSON.stringify({
-        data: JSON.stringify({ quality: 2160, previousQuality: 2160 }),
-        expiration: exp,
-        creation: now
-      });
-      const bandwidthPayload = JSON.stringify({
-        data: JSON.stringify({
-          delay: 0.01,
-          stall: 0,
-          byterate: 50000000,
-          init: now,
-          interruptions: []
-        }),
+        data: JSON.stringify({ quality: 1080, previousQuality: 720 }),
         expiration: exp,
         creation: now
       });
       window.localStorage.setItem('yt-player-quality', qualityPayload);
       window.sessionStorage.setItem('yt-player-quality', qualityPayload);
-      window.localStorage.setItem('yt-player-bandwidth', bandwidthPayload);
+      // Clean up any previously spoofed 50MB/s bandwidth entry that could cause buffering
+      const bwRaw = window.localStorage.getItem('yt-player-bandwidth');
+      if (bwRaw && bwRaw.includes('50000000')) {
+        window.localStorage.removeItem('yt-player-bandwidth');
+      }
     } catch {
       // Ignore storage access errors
     }
@@ -97,10 +90,7 @@
       ) {
         return;
       }
-      if (
-        typeof player.getAvailableQualityLevels !== 'function' ||
-        typeof player.setPlaybackQualityRange !== 'function'
-      ) {
+      if (typeof player.getAvailableQualityLevels !== 'function') {
         return;
       }
       const levels = player.getAvailableQualityLevels();
@@ -119,16 +109,12 @@
 
       if (!videoId || videoId === lastQualityLockedVideoId) return;
 
-      const preferredOrder = ['hd2160', 'hd1440', 'hd1080', 'hd720'];
-      const bestQuality =
-        preferredOrder.find((q) => levels.includes(q)) ||
-        levels.find((q) => q && q !== 'auto');
+      // Default to smooth 1080p (or 720p) instead of forcing heavy 4K/2K streams that choke proxy bandwidth
+      const preferredOrder = ['hd1080', 'hd720'];
+      const targetQuality = preferredOrder.find((q) => levels.includes(q));
 
-      if (bestQuality) {
-        player.setPlaybackQualityRange(bestQuality, bestQuality);
-        if (typeof player.setPlaybackQuality === 'function') {
-          player.setPlaybackQuality(bestQuality);
-        }
+      if (targetQuality && typeof player.setPlaybackQuality === 'function') {
+        player.setPlaybackQuality(targetQuality);
         lastQualityLockedVideoId = videoId;
       }
     } catch {
